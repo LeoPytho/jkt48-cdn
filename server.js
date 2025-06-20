@@ -28,10 +28,29 @@ app.use(cors({
   exposedHeaders: ['Content-Range', 'Accept-Ranges', 'Content-Length', 'X-File-Name']
 }));
 
-// Increased limits for large files
-app.use(express.json({ limit: '200mb' }));
-app.use(express.urlencoded({ extended: true, limit: '200mb' }));
+// CRITICAL FIX: Set express.json and urlencoded limits BEFORE multer
+// These limits must match or exceed multer limits
+app.use(express.json({ 
+  limit: '150mb',
+  extended: true,
+  parameterLimit: 50000,
+  type: ['application/json', 'text/plain']
+}));
+
+app.use(express.urlencoded({ 
+  extended: true, 
+  limit: '150mb',
+  parameterLimit: 50000,
+  type: 'application/x-www-form-urlencoded'
+}));
+
 app.use(express.static('public'));
+
+// CRITICAL FIX: Add raw body parser for large payloads
+app.use(express.raw({
+  limit: '150mb',
+  type: ['application/octet-stream', 'multipart/form-data']
+}));
 
 // Enhanced file type detection with better fallbacks
 async function detectFileType(buffer, originalFilename) {
@@ -93,18 +112,27 @@ async function detectFileType(buffer, originalFilename) {
   return { extension, mimeType, detectedType };
 }
 
-// Enhanced multer configuration for large files
+// CRITICAL FIX: Enhanced multer configuration with proper error handling
 const storage = multer.memoryStorage();
 const upload = multer({
   storage: storage,
   limits: {
     fileSize: 100 * 1024 * 1024, // 100MB limit
     files: 1,
-    fields: 1,
-    fieldSize: 100 * 1024 * 1024
+    fields: 10,
+    fieldSize: 100 * 1024 * 1024,
+    fieldNameSize: 100,
+    parts: 1000,
+    headerPairs: 2000
   },
   fileFilter: (req, file, cb) => {
-    console.log(`Receiving file: ${file.originalname}, mimetype: ${file.mimetype}, size: estimated`);
+    console.log(`Receiving file: ${file.originalname}, mimetype: ${file.mimetype}`);
+    
+    // Accept all files but log for monitoring
+    if (file.size && file.size > 100 * 1024 * 1024) {
+      console.warn(`File size warning: ${file.originalname} is ${Math.round(file.size / 1024 / 1024)}MB`);
+    }
+    
     cb(null, true);
   }
 });
@@ -163,104 +191,175 @@ app.get('/api/supported-types', (req, res) => {
   res.json(getSupportedFileTypes());
 });
 
-// Enhanced upload endpoint with better progress tracking
-app.post('/api/upload', (req, res, next) => {
-  // Set longer timeouts for large files
-  req.setTimeout(600000); // 10 minutes
-  res.setTimeout(600000);
-  next();
-}, upload.single('file'), async (req, res) => {
-  const startTime = Date.now();
-  
-  try {
-    if (!req.file) {
-      return res.status(400).json({ 
-        error: 'No file uploaded',
-        details: 'Please select a file to upload'
-      });
-    }
-
-    const buffer = req.file.buffer;
-    const originalFilename = req.file.originalname;
+// CRITICAL FIX: Enhanced upload endpoint with proper error handling and timeouts
+app.post('/api/upload', 
+  // Set timeouts early in the middleware chain
+  (req, res, next) => {
+    req.setTimeout(600000); // 10 minutes
+    res.setTimeout(600000);
     
-    console.log(`Processing upload: ${originalFilename}, size: ${Math.round(buffer.length / 1024)}KB`);
-
-    if (!buffer || buffer.length === 0) {
-      return res.status(400).json({ 
-        error: 'Empty file',
-        details: 'The uploaded file appears to be empty'
-      });
-    }
-
-    // Strict size check
-    if (buffer.length > 100 * 1024 * 1024) {
-      return res.status(413).json({ 
-        error: 'File too large',
-        details: 'Maximum file size is 100MB',
-        maxSize: '100MB',
-        receivedSize: `${Math.round(buffer.length / 1024 / 1024)}MB`
-      });
-    }
-
-    // Enhanced file type detection
-    const { extension, mimeType, detectedType } = await detectFileType(buffer, originalFilename);
+    // Set proper headers for JSON response
+    res.setHeader('Content-Type', 'application/json; charset=utf-8');
     
-    console.log(`Detected: extension=${extension}, mimeType=${mimeType}, detected=${!!detectedType}`);
-
-    // Upload to GitHub with progress tracking
-    console.log('Starting GitHub upload...');
-    const uploadResult = await uploadToGitHub(originalFilename, buffer, extension);
-    
-    if (uploadResult && uploadResult.success) {
-      const processingTime = Date.now() - startTime;
-      const fileUrl = `${req.protocol}://${req.get('host')}/${uploadResult.filename}`;
+    next();
+  },
+  // Custom error handler for multer
+  (req, res, next) => {
+    upload.single('file')(req, res, (err) => {
+      if (err instanceof multer.MulterError) {
+        console.error('Multer error:', err);
+        
+        if (err.code === 'LIMIT_FILE_SIZE') {
+          return res.status(413).json({ 
+            error: 'File too large',
+            details: 'Maximum file size is 100MB',
+            maxSize: '100MB',
+            code: 'FILE_TOO_LARGE'
+          });
+        }
+        
+        if (err.code === 'LIMIT_UNEXPECTED_FILE') {
+          return res.status(400).json({ 
+            error: 'Unexpected file',
+            details: 'Only single file uploads are supported',
+            code: 'UNEXPECTED_FILE'
+          });
+        }
+        
+        return res.status(400).json({ 
+          error: 'File upload error',
+          details: err.message,
+          code: err.code
+        });
+      }
       
-      const response = {
-        success: true,
-        filename: uploadResult.filename,
-        originalFilename: originalFilename,
-        url: fileUrl,
-        size: buffer.length,
-        sizeFormatted: formatFileSize(buffer.length),
-        type: mimeType,
-        extension: extension,
-        detected: !!detectedType,
-        processingTime: processingTime,
-        uploadSpeed: Math.round((buffer.length / 1024) / (processingTime / 1000)) // KB/s
-      };
-
-      console.log(`Upload successful: ${uploadResult.filename} (${Math.round(processingTime / 1000)}s)`);
-      res.json(response);
-    } else {
-      console.error(`Upload failed: ${uploadResult?.error}`);
-      res.status(500).json({ 
-        error: 'Upload failed',
-        details: uploadResult?.error || 'Unknown error occurred during upload'
-      });
-    }
-
-  } catch (error) {
-    console.error('Upload error:', error);
+      if (err) {
+        console.error('Upload middleware error:', err);
+        return res.status(500).json({ 
+          error: 'Upload failed',
+          details: err.message,
+          code: 'UPLOAD_ERROR'
+        });
+      }
+      
+      next();
+    });
+  },
+  // Main upload handler
+  async (req, res) => {
+    const startTime = Date.now();
     
-    // Specific error handling
-    if (error.code === 'LIMIT_FILE_SIZE') {
-      res.status(413).json({ 
-        error: 'File too large',
-        details: 'Maximum file size is 100MB'
+    try {
+      console.log('Upload request received:', {
+        hasFile: !!req.file,
+        contentLength: req.headers['content-length'],
+        contentType: req.headers['content-type']
       });
-    } else if (error.message.includes('timeout')) {
-      res.status(408).json({ 
-        error: 'Upload timeout',
-        details: 'File upload took too long. Please try again with a smaller file.'
-      });
-    } else {
-      res.status(500).json({ 
-        error: 'Internal server error',
-        details: process.env.NODE_ENV === 'development' ? error.message : 'Upload failed'
-      });
+
+      if (!req.file) {
+        return res.status(400).json({ 
+          error: 'No file uploaded',
+          details: 'Please select a file to upload',
+          code: 'NO_FILE'
+        });
+      }
+
+      const buffer = req.file.buffer;
+      const originalFilename = req.file.originalname;
+      
+      console.log(`Processing upload: ${originalFilename}, size: ${Math.round(buffer.length / 1024)}KB`);
+
+      if (!buffer || buffer.length === 0) {
+        return res.status(400).json({ 
+          error: 'Empty file',
+          details: 'The uploaded file appears to be empty',
+          code: 'EMPTY_FILE'
+        });
+      }
+
+      // Double-check size limit
+      if (buffer.length > 100 * 1024 * 1024) {
+        return res.status(413).json({ 
+          error: 'File too large',
+          details: 'Maximum file size is 100MB',
+          maxSize: '100MB',
+          receivedSize: `${Math.round(buffer.length / 1024 / 1024)}MB`,
+          code: 'FILE_TOO_LARGE'
+        });
+      }
+
+      // Enhanced file type detection
+      const { extension, mimeType, detectedType } = await detectFileType(buffer, originalFilename);
+      
+      console.log(`Detected: extension=${extension}, mimeType=${mimeType}, detected=${!!detectedType}`);
+
+      // Upload to GitHub with progress tracking
+      console.log('Starting GitHub upload...');
+      const uploadResult = await uploadToGitHub(originalFilename, buffer, extension);
+      
+      if (uploadResult && uploadResult.success) {
+        const processingTime = Date.now() - startTime;
+        const fileUrl = `${req.protocol}://${req.get('host')}/${uploadResult.filename}`;
+        
+        const response = {
+          success: true,
+          filename: uploadResult.filename,
+          originalFilename: originalFilename,
+          url: fileUrl,
+          size: buffer.length,
+          sizeFormatted: formatFileSize(buffer.length),
+          type: mimeType,
+          extension: extension,
+          detected: !!detectedType,
+          processingTime: processingTime,
+          uploadSpeed: Math.round((buffer.length / 1024) / (processingTime / 1000)) // KB/s
+        };
+
+        console.log(`Upload successful: ${uploadResult.filename} (${Math.round(processingTime / 1000)}s)`);
+        
+        // Ensure JSON response
+        res.status(200).json(response);
+      } else {
+        console.error(`Upload failed: ${uploadResult?.error}`);
+        res.status(500).json({ 
+          error: 'Upload failed',
+          details: uploadResult?.error || 'Unknown error occurred during upload',
+          code: 'GITHUB_UPLOAD_ERROR'
+        });
+      }
+
+    } catch (error) {
+      console.error('Upload processing error:', error);
+      
+      // Ensure we haven't sent headers yet
+      if (res.headersSent) {
+        console.error('Headers already sent, cannot send error response');
+        return;
+      }
+      
+      // Specific error handling
+      if (error.message && error.message.includes('timeout')) {
+        res.status(408).json({ 
+          error: 'Upload timeout',
+          details: 'File upload took too long. Please try again with a smaller file.',
+          code: 'TIMEOUT'
+        });
+      } else if (error.message && error.message.includes('ECONNRESET')) {
+        res.status(503).json({ 
+          error: 'Connection reset',
+          details: 'Connection was reset during upload. Please try again.',
+          code: 'CONNECTION_RESET'
+        });
+      } else {
+        res.status(500).json({ 
+          error: 'Internal server error',
+          details: process.env.NODE_ENV === 'development' ? error.message : 'Upload failed',
+          code: 'INTERNAL_ERROR'
+        });
+      }
     }
   }
-});
+);
 
 // Enhanced file serving with better range request support
 app.get('/:filename', async (req, res) => {
@@ -481,7 +580,7 @@ app.get('/api/health', (req, res) => {
   res.json({
     status: 'ok',
     timestamp: new Date().toISOString(),
-    version: '2.0.0',
+    version: '2.1.0',
     uptime: process.uptime(),
     uptimeFormatted: formatUptime(process.uptime()),
     memory: {
@@ -504,9 +603,14 @@ app.get('/api/health', (req, res) => {
   });
 });
 
-// Enhanced error handling middleware
+// CRITICAL FIX: Enhanced error handling middleware with proper JSON responses
 app.use((error, req, res, next) => {
   console.error('Unhandled error:', error);
+  
+  // Ensure we always respond with JSON
+  if (!res.headersSent) {
+    res.setHeader('Content-Type', 'application/json; charset=utf-8');
+  }
   
   if (error instanceof multer.MulterError) {
     if (error.code === 'LIMIT_FILE_SIZE') {
@@ -540,6 +644,14 @@ app.use((error, req, res, next) => {
     });
   }
   
+  if (error.code === 'ECONNRESET') {
+    return res.status(503).json({
+      error: 'Connection reset',
+      details: 'Connection was reset during processing',
+      code: 'CONNECTION_RESET'
+    });
+  }
+  
   if (!res.headersSent) {
     res.status(500).json({ 
       error: 'Internal server error',
@@ -549,7 +661,7 @@ app.use((error, req, res, next) => {
   }
 });
 
-// 404 handler
+// 404 handler with JSON response
 app.use('*', (req, res) => {
   res.status(404).json({ 
     error: 'Endpoint not found',
@@ -600,14 +712,19 @@ const server = app.listen(PORT, () => {
   console.log(`📄 HTML files served as plain text by default`);
   console.log(`🎯 Large file support: Enabled`);
   console.log(`📡 Range requests: Supported`);
+  console.log(`🔧 Enhanced error handling: Enabled`);
 });
 
-// Enhanced server configuration
+// CRITICAL FIX: Enhanced server configuration for large files
 server.timeout = 600000; // 10 minutes for large files
 server.keepAliveTimeout = 65000;
 server.headersTimeout = 66000;
 server.maxConnections = 1000;
 server.setMaxListeners(0);
+
+// Set higher limits for request processing
+server.maxRequestsPerSocket = 0; // Unlimited requests per socket
+server.requestTimeout = 600000; // 10 minutes
 
 // Graceful shutdown handling
 process.on('SIGTERM', () => {
@@ -624,6 +741,20 @@ process.on('SIGINT', () => {
     console.log('Server closed');
     process.exit(0);
   });
+});
+
+// Handle uncaught exceptions
+process.on('uncaughtException', (error) => {
+  console.error('Uncaught Exception:', error);
+  // Don't exit immediately, let current requests finish
+  setTimeout(() => {
+    process.exit(1);
+  }, 5000);
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('Unhandled Rejection at:', promise, 'reason:', reason);
+  // Don't exit, just log the error
 });
 
 export default app;
