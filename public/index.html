@@ -168,6 +168,7 @@
             justify-content: space-between;
             padding: 8px 0;
             border-bottom: 1px solid #eee;
+            gap: 10px;
         }
 
         .file-item:last-child {
@@ -179,23 +180,35 @@
             align-items: center;
             gap: 10px;
             flex: 1;
+            min-width: 0; /* Allow flex item to shrink */
         }
 
         .file-icon {
             font-size: 1.2rem;
             width: 20px;
             text-align: center;
+            flex-shrink: 0; /* Don't shrink the icon */
+        }
+
+        .file-details {
+            flex: 1;
+            min-width: 0; /* Allow text to truncate */
         }
 
         .file-name {
             font-size: 0.85rem;
             color: #2c3e50;
             word-break: break-word;
+            overflow-wrap: break-word;
+            hyphens: auto;
+            line-height: 1.3;
+            max-width: 100%;
         }
 
         .file-size {
             font-size: 0.75rem;
             color: #7f8c8d;
+            margin-top: 2px;
         }
 
         .remove-file {
@@ -206,6 +219,7 @@
             border-radius: 4px;
             cursor: pointer;
             font-size: 0.7rem;
+            flex-shrink: 0; /* Don't shrink the button */
         }
 
         .remove-file:hover {
@@ -259,6 +273,13 @@
             text-align: center;
             font-size: 0.85rem;
             color: #7f8c8d;
+            line-height: 1.4;
+        }
+
+        .progress-subtext {
+            font-size: 0.75rem;
+            color: #95a5a6;
+            margin-top: 5px;
         }
 
         .results {
@@ -287,18 +308,24 @@
             align-items: center;
             justify-content: space-between;
             margin-bottom: 10px;
+            gap: 10px;
         }
 
         .result-filename {
             font-size: 0.9rem;
             font-weight: 600;
             color: #2c3e50;
+            word-break: break-word;
+            overflow-wrap: break-word;
+            flex: 1;
+            min-width: 0;
         }
 
         .result-status {
             font-size: 0.8rem;
             padding: 2px 8px;
             border-radius: 3px;
+            flex-shrink: 0;
         }
 
         .status-success {
@@ -331,6 +358,8 @@
             font-size: 0.8rem;
             font-family: monospace;
             background: white;
+            min-width: 0;
+            word-break: break-all;
         }
 
         .copy-btn {
@@ -342,6 +371,7 @@
             cursor: pointer;
             font-size: 0.75rem;
             transition: background 0.2s ease;
+            flex-shrink: 0;
         }
 
         .copy-btn:hover {
@@ -388,6 +418,20 @@
             .copy-btn {
                 margin-top: 5px;
             }
+
+            .file-name {
+                font-size: 0.8rem;
+            }
+
+            .result-header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 5px;
+            }
+
+            .result-status {
+                align-self: flex-end;
+            }
         }
     </style>
 </head>
@@ -430,7 +474,8 @@
                 <div class="progress-bar">
                     <div class="progress-fill" id="progressFill"></div>
                 </div>
-                <div class="progress-text" id="progressText">Uploading... 0%</div>
+                <div class="progress-text" id="progressText">Preparing upload...</div>
+                <div class="progress-subtext" id="progressSubtext">Initializing...</div>
             </div>
         </div>
 
@@ -461,6 +506,17 @@
             "code": "fas fa-code",
             "other": "fas fa-file"
         };
+
+        const uploadSteps = [
+            { text: "Menyiapkan upload...", subtext: "Menginisialisasi proses" },
+            { text: "Memeriksa file...", subtext: "Validasi format dan ukuran" },
+            { text: "Mengkompresi file...", subtext: "Optimasi untuk transfer" },
+            { text: "Menghubungi server...", subtext: "Membuat koneksi aman" },
+            { text: "Mengupload file...", subtext: "Transfer data sedang berlangsung" },
+            { text: "Memproses di server...", subtext: "Menyimpan ke CDN storage" },
+            { text: "Membuat link akses...", subtext: "Generating public URL" },
+            { text: "Finalisasi...", subtext: "Menyelesaikan proses upload" }
+        ];
         
         const dropArea = document.getElementById('dropArea');
         const fileInput = document.getElementById('fileInput');
@@ -471,6 +527,7 @@
         const progressContainer = document.getElementById('progressContainer');
         const progressFill = document.getElementById('progressFill');
         const progressText = document.getElementById('progressText');
+        const progressSubtext = document.getElementById('progressSubtext');
         const results = document.getElementById('results');
         const resultsContent = document.getElementById('resultsContent');
 
@@ -541,7 +598,7 @@
                     <div class="file-item">
                         <div class="file-info">
                             <i class="file-icon ${iconClass} ${fileType}"></i>
-                            <div>
+                            <div class="file-details">
                                 <div class="file-name">${file.name}</div>
                                 <div class="file-size">${formatFileSize(file.size)}</div>
                             </div>
@@ -577,12 +634,33 @@
             const uploadResults = [];
             const totalFiles = selectedFiles.length;
 
+            // Initial setup phase
+            for (let stepIndex = 0; stepIndex < 3; stepIndex++) {
+                const step = uploadSteps[stepIndex];
+                progressText.textContent = step.text;
+                progressSubtext.textContent = step.subtext;
+                progressFill.style.width = (stepIndex + 1) * 5 + '%';
+                await new Promise(resolve => setTimeout(resolve, 800));
+            }
+
+            // File upload phase
             for (let i = 0; i < selectedFiles.length; i++) {
                 const file = selectedFiles[i];
-                const progress = ((i + 1) / totalFiles) * 100;
-                
-                progressFill.style.width = progress + '%';
-                progressText.textContent = `Uploading ${file.name}... ${Math.round(progress)}%`;
+                const baseProgress = 15; // Progress after initial steps
+                const fileProgress = (85 / totalFiles) * i; // Remaining 85% divided by files
+                const currentProgress = baseProgress + fileProgress;
+
+                // Update progress for each upload step
+                for (let stepIndex = 3; stepIndex < uploadSteps.length; stepIndex++) {
+                    const step = uploadSteps[stepIndex];
+                    const stepProgress = currentProgress + ((85 / totalFiles) / uploadSteps.length) * (stepIndex - 2);
+                    
+                    progressFill.style.width = stepProgress + '%';
+                    progressText.textContent = `${step.text} (${i + 1}/${totalFiles})`;
+                    progressSubtext.textContent = `${step.subtext} - ${file.name}`;
+                    
+                    await new Promise(resolve => setTimeout(resolve, 400));
+                }
 
                 const formData = new FormData();
                 formData.append('file', file);
@@ -609,19 +687,20 @@
                         error: 'Network error: ' + error.message
                     });
                 }
-
-                // Small delay for animation
-                await new Promise(resolve => setTimeout(resolve, 200));
             }
 
-            progressText.textContent = 'Upload completed!';
+            // Final completion
+            progressFill.style.width = '100%';
+            progressText.textContent = 'Upload selesai!';
+            progressSubtext.textContent = `${totalFiles} file berhasil diproses`;
+            
             setTimeout(() => {
                 progressContainer.style.display = 'none';
                 displayResults(uploadResults);
                 uploadBtn.disabled = false;
                 selectedFiles = [];
                 updateFilesList();
-            }, 1000);
+            }, 1500);
         }
 
         function displayResults(uploadResults) {
