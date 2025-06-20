@@ -48,9 +48,6 @@ async function detectFileType(buffer, originalFilename) {
     }
 
     // Special handling for common file types that might not be detected
-    const firstBytes = buffer.slice(0, 20);
-    
-    // Check for additional video formats
     if (extension === 'bin' || !detectedType) {
       const filename = originalFilename?.toLowerCase() || '';
       
@@ -78,6 +75,9 @@ async function detectFileType(buffer, originalFilename) {
       } else if (filename.endsWith('.3gp')) {
         extension = '3gp';
         mimeType = 'video/3gpp';
+      } else if (filename.endsWith('.html') || filename.endsWith('.htm')) {
+        extension = 'html';
+        mimeType = 'text/html';
       }
     }
 
@@ -94,18 +94,59 @@ const storage = multer.memoryStorage();
 const upload = multer({
   storage: storage,
   limits: {
-    fileSize: 200 * 1024 * 1024, // Naikkan ke 200MB
+    fileSize: 200 * 1024 * 1024, // 200MB
     files: 1,
     fields: 1,
-    fieldSize: 200 * 1024 * 1024, // Tambahkan field size limit
-    headerPairs: 2000 // Tambahkan header pairs limit
+    fieldSize: 200 * 1024 * 1024,
+    headerPairs: 2000
   },
   fileFilter: (req, file, cb) => {
-    // Allow all file types but log what we're receiving
     console.log(`Receiving file: ${file.originalname}, mimetype: ${file.mimetype}, size: ${file.size || 'unknown'}`);
     cb(null, true);
   }
 });
+
+// Function untuk mengecek apakah file ada dengan retry mechanism
+async function checkFileExists(filename, maxRetries = 3) {
+  for (let i = 0; i < maxRetries; i++) {
+    try {
+      console.log(`Checking file existence: ${filename} (attempt ${i + 1}/${maxRetries})`);
+      const result = await getFileInfo(filename);
+      if (result && result.success) {
+        console.log(`File exists: ${filename}, size: ${result.size} bytes`);
+        return result;
+      }
+    } catch (error) {
+      console.warn(`File check attempt ${i + 1} failed:`, error.message);
+      if (i < maxRetries - 1) {
+        // Wait before retry
+        await new Promise(resolve => setTimeout(resolve, 1000 * (i + 1)));
+      }
+    }
+  }
+  return null;
+}
+
+// Function untuk mendapatkan file dengan retry mechanism
+async function getFileWithRetry(filename, maxRetries = 3) {
+  for (let i = 0; i < maxRetries; i++) {
+    try {
+      console.log(`Getting file: ${filename} (attempt ${i + 1}/${maxRetries})`);
+      const result = await getFileFromGitHub(filename);
+      if (result && result.success && result.data) {
+        console.log(`File retrieved successfully: ${filename}, size: ${result.data.length} bytes`);
+        return result;
+      }
+    } catch (error) {
+      console.warn(`File retrieval attempt ${i + 1} failed:`, error.message);
+      if (i < maxRetries - 1) {
+        // Wait before retry
+        await new Promise(resolve => setTimeout(resolve, 1000 * (i + 1)));
+      }
+    }
+  }
+  return null;
+}
 
 // Serve homepage
 app.get('/', (req, res) => {
@@ -119,7 +160,6 @@ app.get('/api/supported-types', (req, res) => {
 
 // API endpoint for file upload dengan timeout yang lebih panjang
 app.post('/api/upload', (req, res, next) => {
-  // Set timeout untuk file besar (10 menit)
   req.setTimeout(600000);
   res.setTimeout(600000);
   next();
@@ -137,7 +177,6 @@ app.post('/api/upload', (req, res, next) => {
     
     console.log(`Processing upload: ${originalFilename}, size: ${buffer.length} bytes`);
 
-    // Validate buffer
     if (!buffer || buffer.length === 0) {
       return res.status(400).json({ 
         error: 'Empty file',
@@ -145,20 +184,28 @@ app.post('/api/upload', (req, res, next) => {
       });
     }
 
-    // Enhanced file type detection
     const { extension, mimeType, detectedType } = await detectFileType(buffer, originalFilename);
     
     console.log(`Detected: extension=${extension}, mimeType=${mimeType}`);
 
-    // Upload to GitHub
-    const result = await uploadToGitHub(originalFilename, buffer, extension);
+    // Upload to GitHub dengan retry
+    let uploadResult = null;
+    for (let i = 0; i < 3; i++) {
+      try {
+        uploadResult = await uploadToGitHub(originalFilename, buffer, extension);
+        if (uploadResult && uploadResult.success) break;
+      } catch (error) {
+        console.warn(`Upload attempt ${i + 1} failed:`, error.message);
+        if (i < 2) await new Promise(resolve => setTimeout(resolve, 2000));
+      }
+    }
     
-    if (result.success) {
-      const fileUrl = `${req.protocol}://${req.get('host')}/${result.filename}`;
+    if (uploadResult && uploadResult.success) {
+      const fileUrl = `${req.protocol}://${req.get('host')}/${uploadResult.filename}`;
       
       const response = {
         success: true,
-        filename: result.filename,
+        filename: uploadResult.filename,
         originalFilename: originalFilename,
         url: fileUrl,
         size: buffer.length,
@@ -167,13 +214,13 @@ app.post('/api/upload', (req, res, next) => {
         detected: !!detectedType
       };
 
-      console.log(`Upload successful: ${result.filename}`);
+      console.log(`Upload successful: ${uploadResult.filename}`);
       res.json(response);
     } else {
-      console.error(`Upload failed: ${result.error}`);
+      console.error(`Upload failed after retries`);
       res.status(500).json({ 
         error: 'Upload failed',
-        details: result.error
+        details: uploadResult?.error || 'Unknown error'
       });
     }
 
@@ -186,115 +233,156 @@ app.post('/api/upload', (req, res, next) => {
   }
 });
 
-// Serve files from GitHub dengan optimasi untuk file besar
+// Serve files from GitHub dengan optimasi untuk file besar dan perbaikan error handling
 app.get('/:filename', async (req, res) => {
   try {
     const filename = req.params.filename;
     
-    // Validate filename format
-    if (!isValidFilename(filename)) {
-      return res.status(404).json({ error: 'File not found' });
+    console.log(`Request for file: ${filename}`);
+    
+    // Basic filename validation (lebih permissive)
+    if (!filename || filename.includes('..') || filename.includes('/') || filename.includes('\\')) {
+      console.log(`Invalid filename format: ${filename}`);
+      return res.status(404).json({ error: 'Invalid filename' });
     }
-
-    console.log(`Serving file: ${filename}`);
 
     // Set timeout untuk file besar
     req.setTimeout(600000);
     res.setTimeout(600000);
 
-    const result = await getFileFromGitHub(filename);
+    // Cek apakah file ada dengan retry
+    const fileInfo = await checkFileExists(filename);
+    if (!fileInfo) {
+      console.log(`File not found in info check: ${filename}`);
+      return res.status(404).json({ error: 'File not found' });
+    }
+
+    // Dapatkan file dengan retry
+    const result = await getFileWithRetry(filename);
     
-    if (result.success) {
-      const extension = path.extname(filename).slice(1).toLowerCase();
-      const mimeType = mime.lookup(extension) || 'application/octet-stream';
+    if (!result || !result.success || !result.data) {
+      console.log(`Failed to retrieve file: ${filename}`);
+      return res.status(404).json({ error: 'File not found or corrupted' });
+    }
+
+    const extension = path.extname(filename).slice(1).toLowerCase();
+    let mimeType = mime.lookup(extension) || 'application/octet-stream';
+    
+    // Special handling untuk HTML files - tampilkan sebagai plain text
+    const isHtmlFile = extension === 'html' || extension === 'htm';
+    const forceText = req.query.text === 'true' || req.query.plain === 'true';
+    
+    if (isHtmlFile || forceText) {
+      mimeType = 'text/plain';
+      console.log(`Serving HTML file as plain text: ${filename}`);
+    }
+    
+    // Set appropriate headers
+    const headers = {
+      'Content-Type': mimeType,
+      'Content-Length': result.data.length,
+      'Cache-Control': 'public, max-age=31536000',
+      'Access-Control-Allow-Origin': '*',
+      'X-File-Name': filename,
+      'Accept-Ranges': 'bytes'
+    };
+
+    // Handle range requests untuk streaming file besar
+    const range = req.headers.range;
+    if (range && !isHtmlFile && !forceText) {
+      const parts = range.replace(/bytes=/, "").split("-");
+      const start = parseInt(parts[0], 10);
+      const end = parts[1] ? parseInt(parts[1], 10) : result.data.length - 1;
+      const chunksize = (end - start) + 1;
       
-      // Set appropriate headers untuk file besar
-      const headers = {
-        'Content-Type': mimeType,
-        'Content-Length': result.data.length,
-        'Cache-Control': 'public, max-age=31536000', // 1 year cache
-        'Access-Control-Allow-Origin': '*',
-        'X-File-Name': filename,
-        'Accept-Ranges': 'bytes' // Selalu aktifkan range requests
-      };
-
-      // Handle range requests untuk streaming file besar
-      const range = req.headers.range;
-      if (range) {
-        const parts = range.replace(/bytes=/, "").split("-");
-        const start = parseInt(parts[0], 10);
-        const end = parts[1] ? parseInt(parts[1], 10) : result.data.length - 1;
-        const chunksize = (end - start) + 1;
-        
-        // Validasi range
-        if (start >= result.data.length || end >= result.data.length) {
-          res.status(416).set({
-            'Content-Range': `bytes */${result.data.length}`
-          });
-          return res.end();
-        }
-        
-        headers['Content-Range'] = `bytes ${start}-${end}/${result.data.length}`;
-        headers['Content-Length'] = chunksize;
-        
-        console.log(`Serving range: ${start}-${end}/${result.data.length} for ${filename}`);
-        
-        res.writeHead(206, headers);
-        res.end(result.data.slice(start, end + 1));
-        return;
+      // Validasi range
+      if (start >= result.data.length || end >= result.data.length || start > end) {
+        res.status(416).set({
+          'Content-Range': `bytes */${result.data.length}`
+        });
+        return res.end();
       }
+      
+      headers['Content-Range'] = `bytes ${start}-${end}/${result.data.length}`;
+      headers['Content-Length'] = chunksize;
+      
+      console.log(`Serving range: ${start}-${end}/${result.data.length} for ${filename}`);
+      
+      res.writeHead(206, headers);
+      res.end(result.data.slice(start, end + 1));
+      return;
+    }
 
-      // Untuk file besar (>10MB), gunakan streaming
-      if (result.data.length > 10 * 1024 * 1024) {
-        console.log(`Streaming large file: ${filename} (${result.data.length} bytes)`);
-        
-        headers['Content-Disposition'] = `inline; filename="${filename}"`;
-        res.set(headers);
-        
-        // Stream file dalam chunks untuk menghindari memory issues
-        const chunkSize = 1024 * 1024; // 1MB chunks
-        let offset = 0;
-        
-        const sendChunk = () => {
+    // Untuk file HTML atau text, selalu kirim langsung
+    if (isHtmlFile || forceText || mimeType.startsWith('text/')) {
+      headers['Content-Disposition'] = `inline; filename="${filename}"`;
+      res.set(headers);
+      res.send(result.data);
+      return;
+    }
+
+    // Untuk file besar (>5MB), gunakan streaming
+    if (result.data.length > 5 * 1024 * 1024) {
+      console.log(`Streaming large file: ${filename} (${result.data.length} bytes)`);
+      
+      headers['Content-Disposition'] = `inline; filename="${filename}"`;
+      res.set(headers);
+      
+      // Stream file dalam chunks untuk menghindari memory issues
+      const chunkSize = 1024 * 1024; // 1MB chunks
+      let offset = 0;
+      
+      const sendChunk = () => {
+        try {
           if (offset >= result.data.length) {
             res.end();
             return;
           }
           
           const chunk = result.data.slice(offset, Math.min(offset + chunkSize, result.data.length));
-          res.write(chunk);
-          offset += chunkSize;
           
-          // Non-blocking next chunk
-          setImmediate(sendChunk);
-        };
-        
-        sendChunk();
-      } else {
-        // File kecil, kirim langsung
-        headers['Content-Disposition'] = `inline; filename="${filename}"`;
-        res.set(headers);
-        res.send(result.data);
-      }
+          if (!res.write(chunk)) {
+            // Wait for drain event
+            res.once('drain', () => {
+              offset += chunkSize;
+              setImmediate(sendChunk);
+            });
+          } else {
+            offset += chunkSize;
+            setImmediate(sendChunk);
+          }
+        } catch (error) {
+          console.error('Error sending chunk:', error);
+          if (!res.headersSent) {
+            res.status(500).end();
+          }
+        }
+      };
+      
+      sendChunk();
     } else {
-      console.log(`File not found: ${filename}`);
-      res.status(404).json({ error: 'File not found' });
+      // File kecil, kirim langsung
+      headers['Content-Disposition'] = `inline; filename="${filename}"`;
+      res.set(headers);
+      res.send(result.data);
     }
 
   } catch (error) {
     console.error('File serve error:', error);
     
-    // Handle timeout errors
-    if (error.code === 'ETIMEDOUT' || error.message.includes('timeout')) {
-      res.status(408).json({ 
-        error: 'Request timeout',
-        details: 'File is too large or connection is slow. Please try again.'
-      });
-    } else {
-      res.status(500).json({ 
-        error: 'Internal server error',
-        details: error.message
-      });
+    if (!res.headersSent) {
+      // Handle timeout errors
+      if (error.code === 'ETIMEDOUT' || error.message.includes('timeout')) {
+        res.status(408).json({ 
+          error: 'Request timeout',
+          details: 'File is too large or connection is slow. Please try again.'
+        });
+      } else {
+        res.status(500).json({ 
+          error: 'Internal server error',
+          details: error.message
+        });
+      }
     }
   }
 });
@@ -304,14 +392,13 @@ app.get('/api/info/:filename', async (req, res) => {
   try {
     const filename = req.params.filename;
     
-    // Validate filename format
-    if (!isValidFilename(filename)) {
-      return res.status(404).json({ error: 'File not found' });
+    if (!filename || filename.includes('..') || filename.includes('/') || filename.includes('\\')) {
+      return res.status(404).json({ error: 'Invalid filename' });
     }
 
-    const result = await getFileInfo(filename);
+    const result = await checkFileExists(filename);
     
-    if (result.success) {
+    if (result) {
       const extension = path.extname(filename).slice(1).toLowerCase();
       const mimeType = mime.lookup(extension) || 'application/octet-stream';
       
@@ -321,9 +408,11 @@ app.get('/api/info/:filename', async (req, res) => {
         type: mimeType,
         extension: extension,
         url: `${req.protocol}://${req.get('host')}/${filename}`,
+        textUrl: `${req.protocol}://${req.get('host')}/${filename}?text=true`,
         github_url: result.url,
         sha: result.sha,
-        supportsRangeRequests: true
+        supportsRangeRequests: true,
+        isHtml: extension === 'html' || extension === 'htm'
       });
     } else {
       res.status(404).json({ error: 'File not found' });
@@ -342,22 +431,30 @@ app.head('/:filename', async (req, res) => {
   try {
     const filename = req.params.filename;
     
-    if (!isValidFilename(filename)) {
+    if (!filename || filename.includes('..') || filename.includes('/') || filename.includes('\\')) {
       return res.status(404).end();
     }
 
-    const result = await getFileInfo(filename);
+    const result = await checkFileExists(filename);
     
-    if (result.success) {
+    if (result) {
       const extension = path.extname(filename).slice(1);
-      const mimeType = mime.lookup(extension) || 'application/octet-stream';
+      let mimeType = mime.lookup(extension) || 'application/octet-stream';
+      
+      // Check if should be served as text
+      const isHtmlFile = extension === 'html' || extension === 'htm';
+      const forceText = req.query.text === 'true' || req.query.plain === 'true';
+      
+      if (isHtmlFile || forceText) {
+        mimeType = 'text/plain';
+      }
       
       res.set({
         'Content-Type': mimeType,
         'Content-Length': result.size,
         'Cache-Control': 'public, max-age=31536000',
         'X-File-Name': filename,
-        'Accept-Ranges': 'bytes' // Selalu aktifkan untuk semua file
+        'Accept-Ranges': 'bytes'
       });
       
       res.status(200).end();
@@ -415,10 +512,13 @@ app.use((error, req, res, next) => {
   }
   
   console.error('Unhandled error:', error);
-  res.status(500).json({ 
-    error: 'Internal server error',
-    details: process.env.NODE_ENV === 'development' ? error.message : 'Something went wrong'
-  });
+  
+  if (!res.headersSent) {
+    res.status(500).json({ 
+      error: 'Internal server error',
+      details: process.env.NODE_ENV === 'development' ? error.message : 'Something went wrong'
+    });
+  }
 });
 
 // 404 handler
@@ -436,7 +536,8 @@ const server = app.listen(PORT, () => {
   console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
   console.log(`Max file size: 200MB`);
   console.log(`Supported file types: All types supported`);
-  console.log(`Streaming enabled for files > 10MB`);
+  console.log(`HTML files served as plain text by default`);
+  console.log(`Use ?text=true to force plain text display`);
 });
 
 // Konfigurasi server timeout untuk file besar
