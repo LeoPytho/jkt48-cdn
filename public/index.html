@@ -12,23 +12,50 @@
             box-sizing: border-box;
         }
 
-        body {
+        html, body {
+            height: 100vh;
+            overflow: hidden;
             font-family: 'Segoe UI', system-ui, sans-serif;
-            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
-            min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 20px;
+            background: white;
+            background-image: 
+                linear-gradient(rgba(0,0,0,0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0,0,0,0.03) 1px, transparent 1px);
+            background-size: 20px 20px;
+            position: fixed;
+            width: 100%;
         }
 
         .container {
-            background: white;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border: 2px solid rgba(0,0,0,0.1);
             padding: 30px;
-            border-radius: 8px;
-            box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+            border-radius: 12px;
+            box-shadow: 
+                0 20px 40px rgba(0,0,0,0.1),
+                0 0 0 1px rgba(255,255,255,0.5);
             max-width: 500px;
-            width: 100%;
+            width: 90%;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+
+        .container::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .container::-webkit-scrollbar-track {
+            background: rgba(0,0,0,0.05);
+            border-radius: 3px;
+        }
+
+        .container::-webkit-scrollbar-thumb {
+            background: rgba(0,0,0,0.2);
+            border-radius: 3px;
         }
 
         h1 {
@@ -50,23 +77,23 @@
 
         .file-drop-area {
             border: 2px dashed #bdc3c7;
-            border-radius: 6px;
+            border-radius: 8px;
             padding: 40px 20px;
             text-align: center;
             margin-bottom: 20px;
             transition: all 0.3s ease;
             cursor: pointer;
-            background: #f8f9fa;
+            background: rgba(248, 249, 250, 0.8);
         }
 
         .file-drop-area:hover {
             border-color: #3498db;
-            background: #ebf3fd;
+            background: rgba(235, 243, 253, 0.8);
         }
 
         .file-drop-area.dragover {
             border-color: #3498db;
-            background: #e3f2fd;
+            background: rgba(227, 242, 253, 0.8);
             transform: scale(1.02);
         }
 
@@ -97,7 +124,7 @@
             color: white;
             border: none;
             padding: 10px 20px;
-            border-radius: 4px;
+            border-radius: 6px;
             cursor: pointer;
             font-size: 0.9rem;
             font-weight: 500;
@@ -128,9 +155,9 @@
 
         .selected-files {
             display: none;
-            background: #f8f9fa;
+            background: rgba(248, 249, 250, 0.8);
             border: 1px solid #dee2e6;
-            border-radius: 4px;
+            border-radius: 6px;
             padding: 15px;
             margin: 15px 0;
         }
@@ -154,6 +181,12 @@
             flex: 1;
         }
 
+        .file-icon {
+            font-size: 1.2rem;
+            width: 20px;
+            text-align: center;
+        }
+
         .file-name {
             font-size: 0.85rem;
             color: #2c3e50;
@@ -170,7 +203,7 @@
             color: white;
             border: none;
             padding: 4px 8px;
-            border-radius: 3px;
+            border-radius: 4px;
             cursor: pointer;
             font-size: 0.7rem;
         }
@@ -234,9 +267,9 @@
         }
 
         .result-item {
-            background: #f8f9fa;
+            background: rgba(248, 249, 250, 0.8);
             border: 1px solid #dee2e6;
-            border-radius: 4px;
+            border-radius: 6px;
             padding: 15px;
             margin-bottom: 10px;
         }
@@ -294,7 +327,7 @@
             flex: 1;
             padding: 6px 10px;
             border: 1px solid #dee2e6;
-            border-radius: 3px;
+            border-radius: 4px;
             font-size: 0.8rem;
             font-family: monospace;
             background: white;
@@ -305,7 +338,7 @@
             color: white;
             border: none;
             padding: 6px 12px;
-            border-radius: 3px;
+            border-radius: 4px;
             cursor: pointer;
             font-size: 0.75rem;
             transition: background 0.2s ease;
@@ -319,10 +352,20 @@
             background: #28a745;
         }
 
+        /* File type colors */
+        .file-icon.video { color: #e74c3c; }
+        .file-icon.audio { color: #9b59b6; }
+        .file-icon.image { color: #f39c12; }
+        .file-icon.document { color: #3498db; }
+        .file-icon.archive { color: #95a5a6; }
+        .file-icon.code { color: #2ecc71; }
+        .file-icon.other { color: #34495e; }
+
         @media (max-width: 480px) {
             .container {
                 padding: 20px;
-                margin: 10px;
+                width: 95%;
+                max-height: 85vh;
             }
             
             h1 {
@@ -399,6 +442,26 @@
     <script>
         let selectedFiles = [];
         
+        const fileTypes = {
+            "video": ["mp4","avi","mov","wmv","flv","webm","mkv","m4v","3gp"],
+            "audio": ["mp3","wav","flac","aac","ogg","wma","m4a","opus"],
+            "image": ["jpg","jpeg","png","gif","bmp","svg","webp","tiff","ico"],
+            "document": ["pdf","doc","docx","xls","xlsx","ppt","pptx","txt","rtf"],
+            "archive": ["zip","rar","7z","tar","gz","bz2"],
+            "code": ["js","html","css","json","xml","py","java","cpp","c","php"],
+            "other": ["bin","exe","dmg","apk","deb","rpm"]
+        };
+
+        const fileIcons = {
+            "video": "fas fa-video",
+            "audio": "fas fa-music",
+            "image": "fas fa-image",
+            "document": "fas fa-file-alt",
+            "archive": "fas fa-file-archive",
+            "code": "fas fa-code",
+            "other": "fas fa-file"
+        };
+        
         const dropArea = document.getElementById('dropArea');
         const fileInput = document.getElementById('fileInput');
         const selectedFilesDiv = document.getElementById('selectedFiles');
@@ -410,6 +473,19 @@
         const progressText = document.getElementById('progressText');
         const results = document.getElementById('results');
         const resultsContent = document.getElementById('resultsContent');
+
+        // Prevent scrolling
+        document.addEventListener('wheel', (e) => {
+            if (!e.target.closest('.container')) {
+                e.preventDefault();
+            }
+        }, { passive: false });
+
+        document.addEventListener('touchmove', (e) => {
+            if (!e.target.closest('.container')) {
+                e.preventDefault();
+            }
+        }, { passive: false });
 
         // Drag and drop
         dropArea.addEventListener('dragover', (e) => {
@@ -431,6 +507,16 @@
             addFiles(Array.from(e.target.files));
         });
 
+        function getFileType(filename) {
+            const extension = filename.split('.').pop().toLowerCase();
+            for (const [type, extensions] of Object.entries(fileTypes)) {
+                if (extensions.includes(extension)) {
+                    return type;
+                }
+            }
+            return 'other';
+        }
+
         function addFiles(files) {
             files.forEach(file => {
                 if (!selectedFiles.find(f => f.name === file.name)) {
@@ -448,20 +534,24 @@
             }
 
             selectedFilesDiv.style.display = 'block';
-            filesList.innerHTML = selectedFiles.map((file, index) => `
-                <div class="file-item">
-                    <div class="file-info">
-                        <i class="fas fa-file" style="color: #3498db;"></i>
-                        <div>
-                            <div class="file-name">${file.name}</div>
-                            <div class="file-size">${formatFileSize(file.size)}</div>
+            filesList.innerHTML = selectedFiles.map((file, index) => {
+                const fileType = getFileType(file.name);
+                const iconClass = fileIcons[fileType];
+                return `
+                    <div class="file-item">
+                        <div class="file-info">
+                            <i class="file-icon ${iconClass} ${fileType}"></i>
+                            <div>
+                                <div class="file-name">${file.name}</div>
+                                <div class="file-size">${formatFileSize(file.size)}</div>
+                            </div>
                         </div>
+                        <button class="remove-file" onclick="removeFile(${index})">
+                            <i class="fas fa-times"></i>
+                        </button>
                     </div>
-                    <button class="remove-file" onclick="removeFile(${index})">
-                        <i class="fas fa-times"></i>
-                    </button>
-                </div>
-            `).join('');
+                `;
+            }).join('');
         }
 
         function removeFile(index) {
