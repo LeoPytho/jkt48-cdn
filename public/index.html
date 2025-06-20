@@ -22,10 +22,10 @@
             }
         }
         body {
-            background-color: #0f1829;
+            background-color: #f8fafc;
             background-image:
-                linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
-                linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+                linear-gradient(rgba(59, 130, 246, 0.1) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(59, 130, 246, 0.1) 1px, transparent 1px);
             background-size: 20px 20px;
         }
         .progress-fill::after {
@@ -38,7 +38,7 @@
             background: linear-gradient(
                 90deg,
                 transparent,
-                rgba(255,255,255,0.2),
+                rgba(59, 130, 246, 0.3),
                 transparent
             );
             animation: shimmer 2s infinite;
@@ -58,22 +58,22 @@
             width: 6px;
         }
         .container::-webkit-scrollbar-track {
-            background: rgba(255,255,255,0.05);
+            background: rgba(59, 130, 246, 0.1);
             border-radius: 3px;
         }
         .container::-webkit-scrollbar-thumb {
-            background: rgba(255,255,255,0.2);
+            background: rgba(59, 130, 246, 0.3);
             border-radius: 3px;
         }
     </style>
 </head>
-<body class="text-[#f0f0f0] min-h-screen flex items-center justify-center p-4">
+<body class="text-gray-800 min-h-screen flex items-center justify-center p-4">
     
     <main class="w-full max-w-md mx-auto">
-        <div class="relative bg-[#1a2332]/80 backdrop-blur-sm border border-[#2d3748] rounded-lg shadow-2xl shadow-black/50 overflow-hidden">
+        <div class="relative bg-white backdrop-blur-sm border border-blue-200 rounded-lg shadow-2xl shadow-blue-500/20 overflow-hidden">
             
             <!-- Contact Link -->
-            <a href="mailto:jkt48cdn@gmail.com" target="_blank" rel="noopener noreferrer" class="absolute top-4 right-4 text-slate-400 hover:text-[#4299e1] transition-colors z-10" title="Contact Us">
+            <a href="mailto:jkt48cdn@gmail.com" target="_blank" rel="noopener noreferrer" class="absolute top-4 right-4 text-blue-500 hover:text-blue-700 transition-colors z-10" title="Contact Us">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                     <path d="M2.003 5.884L10 9.882l7.997-3.998A2 2 0 0016 4H4a2 2 0 00-1.997 1.884z" />
                     <path d="M18 8.118l-8 4-8-4V14a2 2 0 002 2h12a2 2 0 002-2V8.118z" />
@@ -81,33 +81,33 @@
             </a>
 
             <!-- Header -->
-            <div class="p-5 text-center border-b border-[#2d3748]">
-                <h2 class="text-lg font-bold tracking-wide">
-                    <span class="text-[#4299e1]">JKT48</span> CDN Storage
+            <div class="p-5 text-center border-b border-blue-200 bg-blue-50">
+                <h2 class="text-lg font-bold tracking-wide text-gray-800">
+                    <span class="text-blue-600">JKT48</span> CDN Storage
                 </h2>
-                <p class="text-slate-400 mt-1 text-[11px]">Upload, store, and share your files securely.</p>
+                <p class="text-blue-600 mt-1 text-[11px]">Upload, store, and share your files securely.</p>
             </div>
             
             <div class="p-5 space-y-3 container max-h-[60vh] overflow-y-auto">
                 <!-- Upload Section -->
-                <div id="dropArea" class="relative block p-5 border-2 border-dashed border-[#3a4553] rounded-md text-center cursor-pointer bg-transparent transition-all duration-300 hover:border-[#4299e1] hover:bg-[#1e2832]">
+                <div id="dropArea" class="relative block p-5 border-2 border-dashed border-blue-300 rounded-md text-center cursor-pointer bg-transparent transition-all duration-300 hover:border-blue-500 hover:bg-blue-50">
                     <div class="flex flex-col items-center justify-center pointer-events-none">
-                        <i class="fas fa-cloud-upload-alt text-[#4299e1] text-3xl mb-2"></i>
-                        <span class="text-xs text-slate-200 font-semibold">Drop files here or <span class="text-[#4299e1]">browse files</span></span>
-                        <span class="block text-[10px] text-slate-500 mt-1">Maximum file size: 50MB</span>
+                        <i class="fas fa-cloud-upload-alt text-blue-500 text-3xl mb-2"></i>
+                        <span class="text-xs text-gray-700 font-semibold">Drop files here or <span class="text-blue-600">browse files</span></span>
+                        <span class="block text-[10px] text-blue-500 mt-1">Maximum file size: 50MB</span>
                     </div>
                     <input type="file" id="fileInput" multiple class="absolute top-0 left-0 w-full h-full opacity-0 cursor-pointer"/>
                 </div>
 
                 <!-- Selected Files -->
-                <div id="selectedFiles" class="hidden bg-[#1e2832]/50 border border-[#3a4553] rounded-md p-4 space-y-2">
+                <div id="selectedFiles" class="hidden bg-blue-50 border border-blue-200 rounded-md p-4 space-y-2">
                     <div id="filesList"></div>
                     <div class="flex gap-2 justify-center mt-4">
-                        <button id="uploadBtn" class="bg-[#4299e1] hover:bg-[#63b3ed] text-white px-4 py-2 rounded-md transition-all duration-200 flex items-center gap-2 hover:-translate-y-0.5 disabled:opacity-60 disabled:cursor-not-allowed disabled:transform-none text-xs font-semibold">
+                        <button id="uploadBtn" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md transition-all duration-200 flex items-center gap-2 hover:-translate-y-0.5 disabled:opacity-60 disabled:cursor-not-allowed disabled:transform-none text-xs font-semibold">
                             <i class="fas fa-upload"></i>
                             Upload Files
                         </button>
-                        <button id="clearBtn" class="bg-[#4a5568] hover:bg-[#5a6679] text-white px-4 py-2 rounded-md transition-all duration-200 flex items-center gap-2 hover:-translate-y-0.5 text-xs font-semibold">
+                        <button id="clearBtn" class="bg-gray-100 hover:bg-gray-200 text-gray-700 border border-gray-300 px-4 py-2 rounded-md transition-all duration-200 flex items-center gap-2 hover:-translate-y-0.5 text-xs font-semibold">
                             <i class="fas fa-times"></i>
                             Clear
                         </button>
@@ -116,12 +116,12 @@
 
                 <!-- Progress Container -->
                 <div id="progressContainer" class="hidden space-y-3">
-                    <div class="w-full h-2 bg-[#3a4553] rounded-full overflow-hidden">
-                        <div id="progressFill" class="progress-fill h-full bg-gradient-to-r from-[#4299e1] to-[#63b3ed] w-0 transition-all duration-300 relative"></div>
+                    <div class="w-full h-2 bg-gray-200 rounded-full overflow-hidden">
+                        <div id="progressFill" class="progress-fill h-full bg-gradient-to-r from-blue-500 to-blue-600 w-0 transition-all duration-300 relative"></div>
                     </div>
                     <div class="text-center">
-                        <div id="progressText" class="text-xs text-slate-200 font-semibold">Preparing upload...</div>
-                        <div id="progressSubtext" class="text-[10px] text-slate-400 mt-1">Initializing...</div>
+                        <div id="progressText" class="text-xs text-gray-700 font-semibold">Preparing upload...</div>
+                        <div id="progressSubtext" class="text-[10px] text-blue-600 mt-1">Initializing...</div>
                     </div>
                 </div>
 
@@ -136,6 +136,7 @@
 
     <script>
         let selectedFiles = [];
+        let isProcessing = false; // Add flag to prevent double processing
         
         const fileTypes = {
             "video": ["mp4","avi","mov","wmv","flv","webm","mkv","m4v","3gp"],
@@ -158,13 +159,13 @@
         };
 
         const fileIconColors = {
-            "video": "text-red-400",
-            "audio": "text-purple-400",
-            "image": "text-orange-400",  
-            "document": "text-blue-400",
-            "archive": "text-gray-400",
-            "code": "text-green-400",
-            "other": "text-slate-400"
+            "video": "text-red-500",
+            "audio": "text-purple-500",
+            "image": "text-orange-500",  
+            "document": "text-blue-600",
+            "archive": "text-gray-500",
+            "code": "text-green-500",
+            "other": "text-blue-500"
         };
 
         const uploadSteps = [
@@ -194,25 +195,42 @@
         // Drag and drop events
         dropArea.addEventListener('dragover', (e) => {
             e.preventDefault();
-            dropArea.classList.add('border-[#4299e1]', 'bg-[#1e2832]', 'scale-105');
+            dropArea.classList.add('border-blue-500', 'bg-blue-50', 'scale-105');
         });
 
         dropArea.addEventListener('dragleave', () => {
-            dropArea.classList.remove('border-[#4299e1]', 'bg-[#1e2832]', 'scale-105');
+            dropArea.classList.remove('border-blue-500', 'bg-blue-50', 'scale-105');
         });
 
         dropArea.addEventListener('drop', (e) => {
             e.preventDefault();
-            dropArea.classList.remove('border-[#4299e1]', 'bg-[#1e2832]', 'scale-105');
-            addFiles(Array.from(e.dataTransfer.files));
+            dropArea.classList.remove('border-blue-500', 'bg-blue-50', 'scale-105');
+            if (!isProcessing) {
+                addFiles(Array.from(e.dataTransfer.files));
+            }
         });
 
-        dropArea.addEventListener('click', () => {
-            fileInput.click();
+        // Fix: Remove the click event from dropArea and only handle it on the input
+        fileInput.addEventListener('click', (e) => {
+            e.stopPropagation(); // Prevent event bubbling
         });
 
         fileInput.addEventListener('change', (e) => {
-            addFiles(Array.from(e.target.files));
+            e.preventDefault();
+            e.stopPropagation();
+            if (!isProcessing && e.target.files.length > 0) {
+                addFiles(Array.from(e.target.files));
+            }
+        });
+
+        // Add click event only to the dropArea div, not the input
+        dropArea.addEventListener('click', (e) => {
+            if (e.target === dropArea || e.target.closest('#dropArea > div')) {
+                e.preventDefault();
+                if (!isProcessing) {
+                    fileInput.click();
+                }
+            }
         });
 
         function getFileType(filename) {
@@ -226,13 +244,15 @@
         }
 
         function addFiles(files) {
+            if (isProcessing) return; // Prevent adding files while processing
+            
             files.forEach(file => {
                 if (!selectedFiles.find(f => f.name === file.name && f.size === file.size)) {
                     selectedFiles.push(file);
                 }
             });
             updateFilesList();
-            fileInput.value = '';
+            fileInput.value = ''; // Clear the input after processing
         }
 
         function updateFilesList() {
@@ -247,12 +267,12 @@
                 const iconClass = fileIcons[fileType];
                 const iconColor = fileIconColors[fileType];
                 return `
-                    <div class="flex items-center justify-between py-2 px-3 bg-[#1a2332]/50 border border-[#3a4553] rounded-md gap-3">
+                    <div class="flex items-center justify-between py-2 px-3 bg-white border border-blue-200 rounded-md gap-3">
                         <div class="flex items-center gap-3 flex-1 min-w-0">
                             <i class="${iconClass} ${iconColor} text-sm w-4 text-center flex-shrink-0"></i>
                             <div class="flex-1 min-w-0">
-                                <div class="text-xs text-slate-200 break-words leading-tight font-medium">${file.name}</div>
-                                <div class="text-[10px] text-slate-400 mt-0.5">${formatFileSize(file.size)}</div>
+                                <div class="text-xs text-gray-800 break-words leading-tight font-medium">${file.name}</div>
+                                <div class="text-[10px] text-blue-600 mt-0.5">${formatFileSize(file.size)}</div>
                             </div>
                         </div>
                         <button class="bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded text-[10px] flex-shrink-0 transition-colors" onclick="removeFile(${index})">
@@ -264,11 +284,13 @@
         }
 
         function removeFile(index) {
+            if (isProcessing) return;
             selectedFiles.splice(index, 1);
             updateFilesList();
         }
 
         clearBtn.addEventListener('click', () => {
+            if (isProcessing) return;
             selectedFiles = [];
             updateFilesList();
             results.classList.add('hidden');
@@ -277,8 +299,9 @@
         uploadBtn.addEventListener('click', uploadFiles);
 
         async function uploadFiles() {
-            if (selectedFiles.length === 0) return;
+            if (selectedFiles.length === 0 || isProcessing) return;
 
+            isProcessing = true; // Set processing flag
             uploadBtn.disabled = true;
             progressContainer.classList.remove('hidden');
             results.classList.add('hidden');
@@ -349,6 +372,7 @@
                 progressContainer.classList.add('hidden');
                 displayResults(uploadResults);
                 uploadBtn.disabled = false;
+                isProcessing = false; // Reset processing flag
                 selectedFiles = [];
                 updateFilesList();
             }, 1500);
@@ -362,22 +386,22 @@
                 
                 if (result.success) {
                     return `
-                        <div class="bg-[#1a2332]/50 border border-[#3a4553] border-l-4 border-l-green-500 rounded-md p-3">
+                        <div class="bg-white border border-blue-200 border-l-4 border-l-green-500 rounded-md p-3">
                             <div class="flex items-center justify-between mb-2 gap-3">
                                 <div class="flex items-center gap-2 flex-1 min-w-0">
                                     <i class="${iconClass} ${iconColor} text-sm"></i>
-                                    <div class="text-xs font-semibold text-slate-200 break-words flex-1 min-w-0">${result.filename}</div>
+                                    <div class="text-xs font-semibold text-gray-800 break-words flex-1 min-w-0">${result.filename}</div>
                                 </div>
-                                <div class="text-[10px] px-2 py-1 rounded bg-green-500/20 text-green-400 flex-shrink-0">
+                                <div class="text-[10px] px-2 py-1 rounded bg-green-100 text-green-700 flex-shrink-0">
                                     <i class="fas fa-check mr-1"></i>Success
                                 </div>
                             </div>
-                            <div class="text-[10px] text-slate-400 mb-2">
+                            <div class="text-[10px] text-blue-600 mb-2">
                                 Size: ${formatFileSize(result.size)} | Type: ${result.type}
                             </div>
                             <div class="flex flex-col sm:flex-row gap-2">
-                                <input type="text" class="flex-1 px-2 py-1 border border-[#3a4553] rounded text-[10px] font-mono bg-[#1e2832] text-slate-300 min-w-0 break-all" value="${result.url}" readonly>
-                                <button class="bg-[#4299e1] hover:bg-[#63b3ed] text-white px-2 py-1 rounded text-[10px] transition-colors flex-shrink-0" onclick="copyUrl('${result.url}', this)">
+                                <input type="text" class="flex-1 px-2 py-1 border border-blue-200 rounded text-[10px] font-mono bg-blue-50 text-gray-700 min-w-0 break-all" value="${result.url}" readonly>
+                                <button class="bg-blue-600 hover:bg-blue-700 text-white px-2 py-1 rounded text-[10px] transition-colors flex-shrink-0" onclick="copyUrl('${result.url}', this)">
                                     <i class="fas fa-copy mr-1"></i>Copy
                                 </button>
                             </div>
@@ -385,17 +409,17 @@
                     `;
                 } else {
                     return `
-                        <div class="bg-[#1a2332]/50 border border-[#3a4553] border-l-4 border-l-red-500 rounded-md p-3">
+                        <div class="bg-white border border-blue-200 border-l-4 border-l-red-500 rounded-md p-3">
                             <div class="flex items-center justify-between mb-2 gap-2">
                                 <div class="flex items-center gap-2 flex-1 min-w-0">
                                     <i class="${iconClass} ${iconColor} text-sm"></i>
-                                    <div class="text-xs font-semibold text-slate-200 break-words flex-1 min-w-0">${result.filename}</div>
+                                    <div class="text-xs font-semibold text-gray-800 break-words flex-1 min-w-0">${result.filename}</div>
                                 </div>
-                                <div class="text-[10px] px-2 py-1 rounded bg-red-500/20 text-red-400 flex-shrink-0">
+                                <div class="text-[10px] px-2 py-1 rounded bg-red-100 text-red-700 flex-shrink-0">
                                     <i class="fas fa-times mr-1"></i>Failed
                                 </div>
                             </div>
-                            <div class="text-[10px] text-slate-400">
+                            <div class="text-[10px] text-blue-600">
                                 Error: ${result.error}
                             </div>
                         </div>
@@ -411,13 +435,13 @@
             navigator.clipboard.writeText(url).then(() => {
                 const originalHTML = button.innerHTML;
                 button.innerHTML = '<i class="fas fa-check mr-1"></i>Copied';
-                button.classList.remove('bg-[#4299e1]', 'hover:bg-[#63b3ed]');
+                button.classList.remove('bg-blue-600', 'hover:bg-blue-700');
                 button.classList.add('bg-green-500');
                 
                 setTimeout(() => {
                     button.innerHTML = originalHTML;
                     button.classList.remove('bg-green-500');
-                    button.classList.add('bg-[#4299e1]', 'hover:bg-[#63b3ed]');
+                    button.classList.add('bg-blue-600', 'hover:bg-blue-700');
                 }, 2000);
             }).catch(() => {
                 // Fallback
@@ -447,7 +471,7 @@
             }
 
             const toast = document.createElement('div');
-            toast.className = 'toast fixed top-4 right-4 p-3 rounded-md shadow-lg flex items-center gap-3 bg-[#1a2332] border z-50 w-max max-w-xs';
+            toast.className = 'toast fixed top-4 right-4 p-3 rounded-md shadow-lg flex items-center gap-3 bg-white border z-50 w-max max-w-xs';
             
             const text = document.createElement('span');
             text.className = 'text-xs font-semibold';
@@ -455,13 +479,13 @@
 
             let icon, borderColor;
             if (type === 'success') {
-                borderColor = 'border-green-500/50';
-                text.classList.add('text-green-400');
-                icon = `<svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-green-400" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" /></svg>`;
+                borderColor = 'border-green-200';
+                text.classList.add('text-green-700');
+                icon = `<svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-green-500" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" /></svg>`;
             } else {
-                borderColor = 'border-red-500/50';
-                text.classList.add('text-red-400');
-                icon = `<svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-red-400" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" /></svg>`;
+                borderColor = 'border-red-200';
+                text.classList.add('text-red-700');
+                icon = `<svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-red-500" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" /></svg>`;
             }
             toast.classList.add(borderColor);
             toast.innerHTML = icon;
