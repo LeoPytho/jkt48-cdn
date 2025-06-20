@@ -1,7 +1,6 @@
 import { Octokit } from '@octokit/rest';
 import crypto from 'crypto';
 
-// GitHub configuration
 const GITHUB_TOKEN = process.env.GITHUB_TOKEN;
 const GITHUB_OWNER = process.env.GITHUB_OWNER;
 const GITHUB_REPO = process.env.GITHUB_REPO;
@@ -12,24 +11,20 @@ if (!GITHUB_TOKEN || !GITHUB_OWNER || !GITHUB_REPO) {
 }
 
 const octokit = new Octokit({
-  auth: GITHUB_TOKEN
+  auth: GITHUB_TOKEN,
+  request: {
+    timeout: 120000, // 2 minutes timeout
+    retries: 3
+  }
 });
 
-// Generate short filename with J- prefix
 function generateShortFilename(buffer, extension, originalFilename = '') {
-  // Create short hash (8 characters) from buffer
   const hash = crypto.createHash('md5').update(buffer).digest('hex').substring(0, 8);
-  
-  // Add timestamp component (4 characters)
   const timestamp = Date.now().toString(36).slice(-4);
   
-  // Clean extension - remove dot if present and ensure it's valid
   let cleanExt = extension.toLowerCase();
-  if (cleanExt.startsWith('.')) {
-    cleanExt = cleanExt.slice(1);
-  }
+  if (cleanExt.startsWith('.')) cleanExt = cleanExt.slice(1);
   
-  // If no extension detected, try to extract from original filename
   if (!cleanExt || cleanExt === 'bin') {
     const originalExt = originalFilename.split('.').pop();
     if (originalExt && originalExt !== originalFilename) {
@@ -37,36 +32,25 @@ function generateShortFilename(buffer, extension, originalFilename = '') {
     }
   }
   
-  // Fallback to 'bin' if still no extension
-  if (!cleanExt) {
-    cleanExt = 'bin';
-  }
-  
-  // Combine: J- + 8char hash + 4char timestamp + extension
+  if (!cleanExt) cleanExt = 'bin';
   return `J-${hash}${timestamp}.${cleanExt}`;
 }
 
 export async function uploadToGitHub(originalFilename, buffer, extension) {
   try {
-    // Validate buffer
     if (!buffer || buffer.length === 0) {
       throw new Error('Invalid or empty buffer');
     }
 
-    // Generate short filename
-    const filename = generateShortFilename(buffer, extension, originalFilename);
-    
-    // Convert buffer to base64 - handle large files by chunking if needed
-    let content;
-    try {
-      content = buffer.toString('base64');
-    } catch (error) {
-      throw new Error('Failed to convert buffer to base64: ' + error.message);
+    if (buffer.length > 100 * 1024 * 1024) {
+      throw new Error('File too large for GitHub API (max 100MB)');
     }
-    
+
+    const filename = generateShortFilename(buffer, extension, originalFilename);
+    const content = buffer.toString('base64');
     const path = `files/${filename}`;
     
-    // Check if file already exists (very unlikely with this naming scheme)
+    // Check existing file
     let sha = null;
     try {
       const { data: existingFile } = await octokit.rest.repos.getContent({
@@ -77,15 +61,9 @@ export async function uploadToGitHub(originalFilename, buffer, extension) {
       });
       sha = existingFile.sha;
     } catch (error) {
-      // File doesn't exist, which is fine for new uploads
       if (error.status !== 404) {
         console.warn('Error checking existing file:', error.message);
       }
-    }
-
-    // GitHub API has a 100MB limit, check file size before upload
-    if (buffer.length > 100 * 1024 * 1024) {
-      throw new Error('File too large for GitHub API (max 100MB)');
     }
 
     const response = await octokit.rest.repos.createOrUpdateFileContents({
@@ -123,6 +101,7 @@ export async function getFileFromGitHub(filename) {
 
     const path = `files/${filename}`;
     
+    // Use download_url for large files to avoid base64 conversion issues
     const response = await octokit.rest.repos.getContent({
       owner: GITHUB_OWNER,
       repo: GITHUB_REPO,
@@ -130,26 +109,29 @@ export async function getFileFromGitHub(filename) {
       ref: GITHUB_BRANCH
     });
 
-    if (response.data.content) {
-      let buffer;
-      try {
-        buffer = Buffer.from(response.data.content, 'base64');
-      } catch (error) {
-        throw new Error('Failed to decode file content');
-      }
-
-      return {
-        success: true,
-        data: buffer,
-        size: response.data.size,
-        sha: response.data.sha
-      };
-    } else {
-      return {
-        success: false,
-        error: 'File content not found'
-      };
+    if (!response.data.content && !response.data.download_url) {
+      throw new Error('File content not available');
     }
+
+    let buffer;
+    if (response.data.size > 1024 * 1024) { // For files > 1MB, use download_url
+      const downloadResponse = await fetch(response.data.download_url);
+      if (!downloadResponse.ok) {
+        throw new Error(`Download failed: ${downloadResponse.statusText}`);
+      }
+      const arrayBuffer = await downloadResponse.arrayBuffer();
+      buffer = Buffer.from(arrayBuffer);
+    } else {
+      // For smaller files, use base64 content
+      buffer = Buffer.from(response.data.content, 'base64');
+    }
+
+    return {
+      success: true,
+      data: buffer,
+      size: buffer.length,
+      sha: response.data.sha
+    };
 
   } catch (error) {
     console.error('GitHub download error:', error);
@@ -160,14 +142,10 @@ export async function getFileFromGitHub(filename) {
   }
 }
 
-// Helper function to validate filename format - more flexible for various extensions
 export function isValidFilename(filename) {
-  // Check if filename matches pattern: J-[8chars][4chars].[ext]
-  // Allow alphanumeric extensions of various lengths
   return /^J-[a-f0-9]{8}[a-z0-9]{4}\.[a-zA-Z0-9]{1,10}$/i.test(filename);
 }
 
-// Get file info from GitHub without downloading full content
 export async function getFileInfo(filename) {
   try {
     if (!filename || !isValidFilename(filename)) {
@@ -175,7 +153,6 @@ export async function getFileInfo(filename) {
     }
 
     const path = `files/${filename}`;
-    
     const response = await octokit.rest.repos.getContent({
       owner: GITHUB_OWNER,
       repo: GITHUB_REPO,
@@ -200,7 +177,6 @@ export async function getFileInfo(filename) {
   }
 }
 
-// Helper function to get supported file types
 export function getSupportedFileTypes() {
   return {
     video: ['mp4', 'avi', 'mov', 'wmv', 'flv', 'webm', 'mkv', 'm4v', '3gp'],
