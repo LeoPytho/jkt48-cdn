@@ -1,0 +1,7 @@
+node_modules
+.vscode
+.vscode/*
+.cache
+.output
+.env
+/src/test
