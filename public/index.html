@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CDN File Storage</title>
+    <title>JKT48 CDN File Storage</title>
     <style>
         * {
             margin: 0;
@@ -19,6 +19,7 @@
             display: flex;
             align-items: center;
             justify-content: center;
+            padding: 1rem;
         }
 
         .container {
@@ -26,8 +27,10 @@
             padding: 2rem;
             border-radius: 15px;
             box-shadow: 0 10px 30px rgba(0,0,0,0.1);
-            max-width: 600px;
-            width: 90%;
+            max-width: 700px;
+            width: 100%;
+            max-height: 90vh;
+            overflow-y: auto;
         }
 
         h1 {
@@ -99,6 +102,23 @@
             text-align: center;
             color: #667eea;
             margin-top: 1rem;
+            padding: 1rem;
+        }
+
+        .loading-spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-right: 10px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
         }
 
         .result {
@@ -107,6 +127,8 @@
             padding: 1.5rem;
             border-radius: 10px;
             margin-top: 1rem;
+            max-height: 400px;
+            overflow-y: auto;
         }
 
         .result.success {
@@ -118,49 +140,75 @@
         }
 
         .file-info {
-            display: flex;
-            flex-direction: column;
-            gap: 0.5rem;
+            background: white;
+            padding: 1rem;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
         }
 
-        .file-info div {
+        .file-info h3 {
+            margin-bottom: 1rem;
+            color: #333;
+            word-break: break-all;
+        }
+
+        .info-row {
             display: flex;
             justify-content: space-between;
             align-items: center;
+            margin-bottom: 0.5rem;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .info-label {
+            font-weight: 600;
+            color: #555;
+            min-width: 60px;
+        }
+
+        .info-value {
+            color: #777;
+            flex: 1;
+            text-align: right;
         }
 
         .copy-btn {
             background: #28a745;
             color: white;
             border: none;
-            padding: 5px 15px;
+            padding: 6px 12px;
             border-radius: 15px;
             cursor: pointer;
             font-size: 0.8rem;
+            transition: background 0.2s ease;
         }
 
         .copy-btn:hover {
             background: #218838;
         }
 
-        .preview {
-            margin-top: 1rem;
-            text-align: center;
+        .copy-btn.copied {
+            background: #17a2b8;
         }
 
-        .preview img, .preview video {
-            max-width: 100%;
-            max-height: 300px;
-            border-radius: 10px;
-        }
-
-        .preview audio {
-            width: 100%;
+        .url-display {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            padding: 8px;
+            font-family: monospace;
+            font-size: 0.9rem;
+            word-break: break-all;
+            margin-right: 10px;
+            flex: 1;
         }
 
         @media (max-width: 480px) {
             .container {
                 padding: 1rem;
+                margin: 0.5rem;
             }
             
             h1 {
@@ -170,12 +218,26 @@
             .upload-area {
                 padding: 2rem 1rem;
             }
+
+            .info-row {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+
+            .info-value {
+                text-align: left;
+            }
+
+            .url-display {
+                margin-right: 0;
+                margin-bottom: 10px;
+            }
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>📁 CDN File Storage</h1>
+        <h1>📁 JKT48 CDN Storage</h1>
         
         <div class="upload-area" id="uploadArea">
             <div class="upload-icon">☁️</div>
@@ -189,7 +251,7 @@
         </div>
 
         <div class="loading" id="loading">
-            <div>📤 Uploading files...</div>
+            <div><span class="loading-spinner"></span>Uploading files...</div>
         </div>
 
         <div class="result" id="result">
@@ -210,7 +272,8 @@
             uploadArea.classList.add('dragover');
         });
 
-        uploadArea.addEventListener('dragleave', () => {
+        uploadArea.addEventListener('dragleave', (e) => {
+            e.preventDefault();
             uploadArea.classList.remove('dragover');
         });
 
@@ -250,6 +313,7 @@
                         results.push({
                             success: true,
                             filename: data.filename,
+                            originalName: file.name,
                             url: data.url,
                             size: data.size,
                             type: data.type
@@ -265,7 +329,7 @@
                     results.push({
                         success: false,
                         filename: file.name,
-                        error: 'Upload failed'
+                        error: 'Upload failed: ' + error.message
                     });
                 }
             }
@@ -279,36 +343,41 @@
             let hasSuccess = false;
             let hasError = false;
 
-            results.forEach(result => {
+            results.forEach((result, index) => {
                 if (result.success) {
                     hasSuccess = true;
                     html += `
                         <div class="file-info">
                             <h3>✅ ${result.filename}</h3>
-                            <div>
-                                <span>URL:</span>
-                                <button class="copy-btn" data-url="${result.url}">Copy URL</button>
+                            <div class="info-row">
+                                <span class="info-label">Original:</span>
+                                <span class="info-value">${result.originalName}</span>
                             </div>
-                            <div>
-                                <span>Size:</span>
-                                <span>${formatFileSize(result.size)}</span>
+                            <div class="info-row">
+                                <span class="info-label">URL:</span>
+                                <div class="url-display">${result.url}</div>
+                                <button class="copy-btn" onclick="copyToClipboard('${result.url}', this)">Copy</button>
                             </div>
-                            <div>
-                                <span>Type:</span>
-                                <span>${result.type}</span>
+                            <div class="info-row">
+                                <span class="info-label">Size:</span>
+                                <span class="info-value">${formatFileSize(result.size)}</span>
                             </div>
-                            ${generatePreview(result.url, result.type)}
+                            <div class="info-row">
+                                <span class="info-label">Type:</span>
+                                <span class="info-value">${result.type}</span>
+                            </div>
                         </div>
-                        <hr style="margin: 1rem 0;">
                     `;
                 } else {
                     hasError = true;
                     html += `
                         <div class="file-info">
                             <h3>❌ ${result.filename}</h3>
-                            <div style="color: #dc3545;">Error: ${result.error}</div>
+                            <div class="info-row">
+                                <span class="info-label">Error:</span>
+                                <span class="info-value">${result.error}</span>
+                            </div>
                         </div>
-                        <hr style="margin: 1rem 0;">
                     `;
                 }
             });
@@ -318,74 +387,53 @@
             result.style.display = 'block';
         }
 
-        function generatePreview(url, type) {
-            if (!url || !type) return '';
-            
-            if (type.startsWith('image/')) {
-                return `<div class="preview"><img src="${url}" alt="Preview" onerror="this.style.display='none'"></div>`;
-            } else if (type.startsWith('video/')) {
-                return `<div class="preview"><video controls src="${url}" onerror="this.style.display='none'"></video></div>`;
-            } else if (type.startsWith('audio/')) {
-                return `<div class="preview"><audio controls src="${url}" onerror="this.style.display='none'"></audio></div>`;
-            }
-            return '';
-        }
-
-        function copyToClipboard(text) {
-            if (navigator.clipboard && navigator.clipboard.writeText) {
-                navigator.clipboard.writeText(text).then(() => {
-                    console.log('Text copied to clipboard');
-                }).catch(err => {
-                    console.error('Failed to copy text: ', err);
-                    fallbackCopyTextToClipboard(text);
-                });
-            } else {
-                fallbackCopyTextToClipboard(text);
-            }
-        }
-
-        function fallbackCopyTextToClipboard(text) {
-            const textArea = document.createElement("textarea");
-            textArea.value = text;
-            textArea.style.top = "0";
-            textArea.style.left = "0";
-            textArea.style.position = "fixed";
-            document.body.appendChild(textArea);
-            textArea.focus();
-            textArea.select();
-            try {
-                document.execCommand('copy');
-            } catch (err) {
-                console.error('Fallback: Oops, unable to copy', err);
-            }
-            document.body.removeChild(textArea);
+        function copyToClipboard(text, button) {
+            navigator.clipboard.writeText(text).then(() => {
+                const originalText = button.textContent;
+                button.textContent = 'Copied!';
+                button.classList.add('copied');
+                
+                setTimeout(() => {
+                    button.textContent = originalText;
+                    button.classList.remove('copied');
+                }, 2000);
+            }).catch(err => {
+                console.error('Failed to copy: ', err);
+                // Fallback for older browsers
+                const textArea = document.createElement('textarea');
+                textArea.value = text;
+                document.body.appendChild(textArea);
+                textArea.select();
+                try {
+                    document.execCommand('copy');
+                    const originalText = button.textContent;
+                    button.textContent = 'Copied!';
+                    setTimeout(() => {
+                        button.textContent = originalText;
+                    }, 2000);
+                } catch (err) {
+                    console.error('Fallback copy failed: ', err);
+                }
+                document.body.removeChild(textArea);
+            });
         }
 
         function formatFileSize(bytes) {
             if (bytes === 0) return '0 Bytes';
             const k = 1024;
-            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
             const i = Math.floor(Math.log(bytes) / Math.log(k));
             return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
         }
 
-        // Handle copy button clicks dengan event delegation
-        document.addEventListener('click', (e) => {
-            if (e.target.classList.contains('copy-btn')) {
-                e.preventDefault();
-                const url = e.target.getAttribute('data-url');
-                if (url) {
-                    copyToClipboard(url);
-                    
-                    const originalText = e.target.textContent;
-                    e.target.textContent = 'Copied!';
-                    e.target.style.background = '#218838';
-                    setTimeout(() => {
-                        e.target.textContent = originalText;
-                        e.target.style.background = '';
-                    }, 2000);
-                }
-            }
+        // Clear file input after upload
+        function clearFileInput() {
+            fileInput.value = '';
+        }
+
+        // Add event listener to clear input
+        fileInput.addEventListener('change', () => {
+            setTimeout(clearFileInput, 1000);
         });
     </script>
 </body>
