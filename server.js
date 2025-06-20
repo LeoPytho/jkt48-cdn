@@ -4,8 +4,7 @@ import cors from 'cors';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { fileTypeFromBuffer } from 'file-type';
-import crypto from 'crypto';
-import { uploadToGitHub, getFileFromGitHub } from './utils/github.js';
+import { uploadToGitHub, getFileFromGitHub, isValidFilename, getFileInfo } from './utils/github.js';
 import mime from 'mime-types';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -58,18 +57,14 @@ app.post('/api/upload', upload.single('file'), async (req, res) => {
       }
     }
 
-    // Generate unique filename
-    const hash = crypto.createHash('md5').update(buffer).digest('hex');
-    const filename = `${hash}.${extension}`;
-
-    // Upload to GitHub
-    const result = await uploadToGitHub(filename, buffer);
+    // Upload to GitHub (the function will generate short filename internally)
+    const result = await uploadToGitHub(req.file.originalname, buffer, extension);
     
     if (result.success) {
-      const fileUrl = `${req.protocol}://${req.get('host')}/${filename}`;
+      const fileUrl = `${req.protocol}://${req.get('host')}/${result.filename}`;
       res.json({
         success: true,
-        filename: filename,
+        filename: result.filename, // Use the generated short filename
         url: fileUrl,
         size: buffer.length,
         type: fileType ? fileType.mime : mime.lookup(extension) || 'application/octet-stream'
@@ -90,7 +85,7 @@ app.get('/:filename', async (req, res) => {
     const filename = req.params.filename;
     
     // Validate filename format
-    if (!/^[a-f0-9]{32}\.[a-zA-Z0-9]+$/i.test(filename)) {
+    if (!isValidFilename(filename)) {
       return res.status(404).json({ error: 'File not found' });
     }
 
@@ -104,7 +99,8 @@ app.get('/:filename', async (req, res) => {
         'Content-Type': mimeType,
         'Content-Disposition': `inline; filename="${filename}"`,
         'Cache-Control': 'public, max-age=31536000', // 1 year cache
-        'Access-Control-Allow-Origin': '*'
+        'Access-Control-Allow-Origin': '*',
+        'X-File-Name': filename
       });
       
       res.send(result.data);
@@ -122,7 +118,13 @@ app.get('/:filename', async (req, res) => {
 app.get('/api/info/:filename', async (req, res) => {
   try {
     const filename = req.params.filename;
-    const result = await getFileFromGitHub(filename);
+    
+    // Validate filename format
+    if (!isValidFilename(filename)) {
+      return res.status(404).json({ error: 'File not found' });
+    }
+
+    const result = await getFileInfo(filename);
     
     if (result.success) {
       const extension = path.extname(filename).slice(1);
@@ -130,9 +132,10 @@ app.get('/api/info/:filename', async (req, res) => {
       
       res.json({
         filename: filename,
-        size: result.data.length,
+        size: result.size,
         type: mimeType,
-        url: `${req.protocol}://${req.get('host')}/${filename}`
+        url: `${req.protocol}://${req.get('host')}/${filename}`,
+        github_url: result.url
       });
     } else {
       res.status(404).json({ error: 'File not found' });
@@ -142,6 +145,64 @@ app.get('/api/info/:filename', async (req, res) => {
   }
 });
 
+// API endpoint to check if file exists
+app.head('/:filename', async (req, res) => {
+  try {
+    const filename = req.params.filename;
+    
+    if (!isValidFilename(filename)) {
+      return res.status(404).end();
+    }
+
+    const result = await getFileInfo(filename);
+    
+    if (result.success) {
+      const extension = path.extname(filename).slice(1);
+      const mimeType = mime.lookup(extension) || 'application/octet-stream';
+      
+      res.set({
+        'Content-Type': mimeType,
+        'Content-Length': result.size,
+        'Cache-Control': 'public, max-age=31536000',
+        'X-File-Name': filename
+      });
+      
+      res.status(200).end();
+    } else {
+      res.status(404).end();
+    }
+  } catch (error) {
+    res.status(500).end();
+  }
+});
+
+// Health check endpoint
+app.get('/api/health', (req, res) => {
+  res.json({
+    status: 'ok',
+    timestamp: new Date().toISOString(),
+    version: '1.0.0'
+  });
+});
+
+// Error handling middleware
+app.use((error, req, res, next) => {
+  if (error instanceof multer.MulterError) {
+    if (error.code === 'LIMIT_FILE_SIZE') {
+      return res.status(400).json({ error: 'File too large. Maximum size is 100MB.' });
+    }
+  }
+  
+  console.error('Unhandled error:', error);
+  res.status(500).json({ error: 'Internal server error' });
+});
+
+// 404 handler
+app.use('*', (req, res) => {
+  res.status(404).json({ error: 'Endpoint not found' });
+});
+
 app.listen(PORT, () => {
   console.log(`CDN Server running on port ${PORT}`);
+  console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
 });
