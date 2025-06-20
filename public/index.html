@@ -1,10 +1,10 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>JKT48 CDN File Storage</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
         * {
             margin: 0;
@@ -13,82 +13,103 @@
         }
 
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
             min-height: 100vh;
             display: flex;
             align-items: center;
             justify-content: center;
-            padding: 1rem;
+            padding: 20px;
         }
 
         .container {
             background: white;
-            padding: 2rem;
-            border-radius: 15px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
-            max-width: 700px;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+            max-width: 500px;
             width: 100%;
-            max-height: 90vh;
-            overflow-y: auto;
         }
 
         h1 {
             text-align: center;
-            color: #333;
-            margin-bottom: 2rem;
-            font-size: 2.5rem;
+            color: #2c3e50;
+            margin-bottom: 25px;
+            font-size: 1.8rem;
+            font-weight: 600;
         }
 
-        .upload-area {
-            border: 3px dashed #ddd;
-            border-radius: 10px;
-            padding: 3rem;
+        h1 i {
+            color: #3498db;
+            margin-right: 10px;
+        }
+
+        .upload-section {
+            margin-bottom: 20px;
+        }
+
+        .file-drop-area {
+            border: 2px dashed #bdc3c7;
+            border-radius: 6px;
+            padding: 40px 20px;
             text-align: center;
-            margin-bottom: 2rem;
+            margin-bottom: 20px;
             transition: all 0.3s ease;
             cursor: pointer;
+            background: #f8f9fa;
         }
 
-        .upload-area:hover {
-            border-color: #667eea;
-            background-color: #f8f9ff;
+        .file-drop-area:hover {
+            border-color: #3498db;
+            background: #ebf3fd;
         }
 
-        .upload-area.dragover {
-            border-color: #667eea;
-            background-color: #f0f2ff;
+        .file-drop-area.dragover {
+            border-color: #3498db;
+            background: #e3f2fd;
+            transform: scale(1.02);
         }
 
-        .upload-icon {
-            font-size: 3rem;
-            color: #ddd;
-            margin-bottom: 1rem;
+        .drop-icon {
+            font-size: 2.5rem;
+            color: #95a5a6;
+            margin-bottom: 15px;
         }
 
-        .upload-text {
-            color: #666;
-            font-size: 1.1rem;
-            margin-bottom: 1rem;
+        .drop-text {
+            color: #7f8c8d;
+            font-size: 0.9rem;
+            margin-bottom: 15px;
         }
 
         #fileInput {
             display: none;
         }
 
+        .btn-group {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+        }
+
         .btn {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: #3498db;
             color: white;
             border: none;
-            padding: 12px 30px;
-            border-radius: 25px;
+            padding: 10px 20px;
+            border-radius: 4px;
             cursor: pointer;
-            font-size: 1rem;
-            transition: transform 0.2s ease;
+            font-size: 0.9rem;
+            font-weight: 500;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
         }
 
         .btn:hover {
-            transform: translateY(-2px);
+            background: #2980b9;
+            transform: translateY(-1px);
         }
 
         .btn:disabled {
@@ -97,207 +118,382 @@
             transform: none;
         }
 
-        .loading {
-            display: none;
-            text-align: center;
-            color: #667eea;
-            margin-top: 1rem;
-            padding: 1rem;
+        .btn-upload {
+            background: #27ae60;
         }
 
-        .loading-spinner {
-            display: inline-block;
-            width: 20px;
-            height: 20px;
-            border: 3px solid #f3f3f3;
-            border-top: 3px solid #667eea;
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-            margin-right: 10px;
+        .btn-upload:hover {
+            background: #229954;
         }
 
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-
-        .result {
+        .selected-files {
             display: none;
             background: #f8f9fa;
-            padding: 1.5rem;
-            border-radius: 10px;
-            margin-top: 1rem;
-            max-height: 400px;
-            overflow-y: auto;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            padding: 15px;
+            margin: 15px 0;
         }
 
-        .result.success {
-            border-left: 4px solid #28a745;
+        .file-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid #eee;
         }
 
-        .result.error {
-            border-left: 4px solid #dc3545;
+        .file-item:last-child {
+            border-bottom: none;
         }
 
         .file-info {
-            background: white;
-            padding: 1rem;
-            border-radius: 8px;
-            margin-bottom: 1rem;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        }
-
-        .file-info h3 {
-            margin-bottom: 1rem;
-            color: #333;
-            word-break: break-all;
-        }
-
-        .info-row {
             display: flex;
-            justify-content: space-between;
             align-items: center;
-            margin-bottom: 0.5rem;
-            flex-wrap: wrap;
             gap: 10px;
-        }
-
-        .info-label {
-            font-weight: 600;
-            color: #555;
-            min-width: 60px;
-        }
-
-        .info-value {
-            color: #777;
             flex: 1;
-            text-align: right;
+        }
+
+        .file-name {
+            font-size: 0.85rem;
+            color: #2c3e50;
+            word-break: break-word;
+        }
+
+        .file-size {
+            font-size: 0.75rem;
+            color: #7f8c8d;
+        }
+
+        .remove-file {
+            background: #e74c3c;
+            color: white;
+            border: none;
+            padding: 4px 8px;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 0.7rem;
+        }
+
+        .remove-file:hover {
+            background: #c0392b;
+        }
+
+        .progress-container {
+            display: none;
+            margin: 20px 0;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: #ecf0f1;
+            border-radius: 4px;
+            overflow: hidden;
+            margin-bottom: 10px;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #3498db, #2980b9);
+            width: 0%;
+            transition: width 0.3s ease;
+            position: relative;
+        }
+
+        .progress-fill::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            bottom: 0;
+            right: 0;
+            background: linear-gradient(
+                90deg,
+                transparent,
+                rgba(255,255,255,0.2),
+                transparent
+            );
+            animation: shimmer 2s infinite;
+        }
+
+        @keyframes shimmer {
+            0% { transform: translateX(-100%); }
+            100% { transform: translateX(100%); }
+        }
+
+        .progress-text {
+            text-align: center;
+            font-size: 0.85rem;
+            color: #7f8c8d;
+        }
+
+        .results {
+            display: none;
+            margin-top: 20px;
+        }
+
+        .result-item {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            padding: 15px;
+            margin-bottom: 10px;
+        }
+
+        .result-item.success {
+            border-left: 4px solid #27ae60;
+        }
+
+        .result-item.error {
+            border-left: 4px solid #e74c3c;
+        }
+
+        .result-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 10px;
+        }
+
+        .result-filename {
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: #2c3e50;
+        }
+
+        .result-status {
+            font-size: 0.8rem;
+            padding: 2px 8px;
+            border-radius: 3px;
+        }
+
+        .status-success {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .status-error {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .result-details {
+            font-size: 0.8rem;
+            color: #6c757d;
+        }
+
+        .url-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-top: 8px;
+        }
+
+        .url-input {
+            flex: 1;
+            padding: 6px 10px;
+            border: 1px solid #dee2e6;
+            border-radius: 3px;
+            font-size: 0.8rem;
+            font-family: monospace;
+            background: white;
         }
 
         .copy-btn {
-            background: #28a745;
+            background: #17a2b8;
             color: white;
             border: none;
             padding: 6px 12px;
-            border-radius: 15px;
+            border-radius: 3px;
             cursor: pointer;
-            font-size: 0.8rem;
+            font-size: 0.75rem;
             transition: background 0.2s ease;
         }
 
         .copy-btn:hover {
-            background: #218838;
+            background: #138496;
         }
 
         .copy-btn.copied {
-            background: #17a2b8;
-        }
-
-        .url-display {
-            background: #f8f9fa;
-            border: 1px solid #dee2e6;
-            border-radius: 4px;
-            padding: 8px;
-            font-family: monospace;
-            font-size: 0.9rem;
-            word-break: break-all;
-            margin-right: 10px;
-            flex: 1;
+            background: #28a745;
         }
 
         @media (max-width: 480px) {
             .container {
-                padding: 1rem;
-                margin: 0.5rem;
+                padding: 20px;
+                margin: 10px;
             }
             
             h1 {
-                font-size: 2rem;
+                font-size: 1.5rem;
             }
             
-            .upload-area {
-                padding: 2rem 1rem;
+            .file-drop-area {
+                padding: 30px 15px;
             }
 
-            .info-row {
+            .btn-group {
                 flex-direction: column;
-                align-items: flex-start;
             }
 
-            .info-value {
-                text-align: left;
+            .url-row {
+                flex-direction: column;
+                align-items: stretch;
             }
 
-            .url-display {
-                margin-right: 0;
-                margin-bottom: 10px;
+            .copy-btn {
+                margin-top: 5px;
             }
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>📁 JKT48 CDN Storage</h1>
+        <h1><i class="fas fa-cloud-upload-alt"></i>JKT48 CDN Storage</h1>
         
-        <div class="upload-area" id="uploadArea">
-            <div class="upload-icon">☁️</div>
-            <div class="upload-text">
-                Drag & drop files here or click to browse
+        <div class="upload-section">
+            <div class="file-drop-area" id="dropArea">
+                <div class="drop-icon">
+                    <i class="fas fa-file-upload"></i>
+                </div>
+                <div class="drop-text">
+                    Drag files here or click to select
+                </div>
+                <div class="btn-group">
+                    <button class="btn" onclick="document.getElementById('fileInput').click()">
+                        <i class="fas fa-folder-open"></i>
+                        Browse Files
+                    </button>
+                </div>
+                <input type="file" id="fileInput" multiple>
             </div>
-            <button class="btn" onclick="document.getElementById('fileInput').click()">
-                Choose Files
-            </button>
-            <input type="file" id="fileInput" multiple accept="*/*">
+
+            <div class="selected-files" id="selectedFiles">
+                <div id="filesList"></div>
+                <div class="btn-group" style="margin-top: 15px;">
+                    <button class="btn btn-upload" id="uploadBtn">
+                        <i class="fas fa-upload"></i>
+                        Upload Files
+                    </button>
+                    <button class="btn" id="clearBtn">
+                        <i class="fas fa-times"></i>
+                        Clear
+                    </button>
+                </div>
+            </div>
+
+            <div class="progress-container" id="progressContainer">
+                <div class="progress-bar">
+                    <div class="progress-fill" id="progressFill"></div>
+                </div>
+                <div class="progress-text" id="progressText">Uploading... 0%</div>
+            </div>
         </div>
 
-        <div class="loading" id="loading">
-            <div><span class="loading-spinner"></span>Uploading files...</div>
-        </div>
-
-        <div class="result" id="result">
-            <div id="resultContent"></div>
+        <div class="results" id="results">
+            <div id="resultsContent"></div>
         </div>
     </div>
 
     <script>
-        const uploadArea = document.getElementById('uploadArea');
+        let selectedFiles = [];
+        
+        const dropArea = document.getElementById('dropArea');
         const fileInput = document.getElementById('fileInput');
-        const loading = document.getElementById('loading');
-        const result = document.getElementById('result');
-        const resultContent = document.getElementById('resultContent');
+        const selectedFilesDiv = document.getElementById('selectedFiles');
+        const filesList = document.getElementById('filesList');
+        const uploadBtn = document.getElementById('uploadBtn');
+        const clearBtn = document.getElementById('clearBtn');
+        const progressContainer = document.getElementById('progressContainer');
+        const progressFill = document.getElementById('progressFill');
+        const progressText = document.getElementById('progressText');
+        const results = document.getElementById('results');
+        const resultsContent = document.getElementById('resultsContent');
 
-        // Drag and drop functionality
-        uploadArea.addEventListener('dragover', (e) => {
+        // Drag and drop
+        dropArea.addEventListener('dragover', (e) => {
             e.preventDefault();
-            uploadArea.classList.add('dragover');
+            dropArea.classList.add('dragover');
         });
 
-        uploadArea.addEventListener('dragleave', (e) => {
-            e.preventDefault();
-            uploadArea.classList.remove('dragover');
+        dropArea.addEventListener('dragleave', () => {
+            dropArea.classList.remove('dragover');
         });
 
-        uploadArea.addEventListener('drop', (e) => {
+        dropArea.addEventListener('drop', (e) => {
             e.preventDefault();
-            uploadArea.classList.remove('dragover');
-            const files = e.dataTransfer.files;
-            handleFiles(files);
+            dropArea.classList.remove('dragover');
+            addFiles(Array.from(e.dataTransfer.files));
         });
 
         fileInput.addEventListener('change', (e) => {
-            handleFiles(e.target.files);
+            addFiles(Array.from(e.target.files));
         });
 
-        async function handleFiles(files) {
-            if (files.length === 0) return;
+        function addFiles(files) {
+            files.forEach(file => {
+                if (!selectedFiles.find(f => f.name === file.name)) {
+                    selectedFiles.push(file);
+                }
+            });
+            updateFilesList();
+            fileInput.value = '';
+        }
 
-            loading.style.display = 'block';
-            result.style.display = 'none';
+        function updateFilesList() {
+            if (selectedFiles.length === 0) {
+                selectedFilesDiv.style.display = 'none';
+                return;
+            }
 
-            const results = [];
+            selectedFilesDiv.style.display = 'block';
+            filesList.innerHTML = selectedFiles.map((file, index) => `
+                <div class="file-item">
+                    <div class="file-info">
+                        <i class="fas fa-file" style="color: #3498db;"></i>
+                        <div>
+                            <div class="file-name">${file.name}</div>
+                            <div class="file-size">${formatFileSize(file.size)}</div>
+                        </div>
+                    </div>
+                    <button class="remove-file" onclick="removeFile(${index})">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+            `).join('');
+        }
 
-            for (let i = 0; i < files.length; i++) {
-                const file = files[i];
+        function removeFile(index) {
+            selectedFiles.splice(index, 1);
+            updateFilesList();
+        }
+
+        clearBtn.addEventListener('click', () => {
+            selectedFiles = [];
+            updateFilesList();
+            results.style.display = 'none';
+        });
+
+        uploadBtn.addEventListener('click', uploadFiles);
+
+        async function uploadFiles() {
+            if (selectedFiles.length === 0) return;
+
+            uploadBtn.disabled = true;
+            progressContainer.style.display = 'block';
+            results.style.display = 'none';
+
+            const uploadResults = [];
+            const totalFiles = selectedFiles.length;
+
+            for (let i = 0; i < selectedFiles.length; i++) {
+                const file = selectedFiles[i];
+                const progress = ((i + 1) / totalFiles) * 100;
+                
+                progressFill.style.width = progress + '%';
+                progressText.textContent = `Uploading ${file.name}... ${Math.round(progress)}%`;
+
                 const formData = new FormData();
                 formData.append('file', file);
 
@@ -308,133 +504,107 @@
                     });
 
                     const data = await response.json();
-
-                    if (data.success) {
-                        results.push({
-                            success: true,
-                            filename: data.filename,
-                            originalName: file.name,
-                            url: data.url,
-                            size: data.size,
-                            type: data.type
-                        });
-                    } else {
-                        results.push({
-                            success: false,
-                            filename: file.name,
-                            error: data.error
-                        });
-                    }
+                    uploadResults.push({
+                        success: data.success,
+                        filename: file.name,
+                        url: data.url,
+                        size: data.size,
+                        type: data.type,
+                        error: data.error
+                    });
                 } catch (error) {
-                    results.push({
+                    uploadResults.push({
                         success: false,
                         filename: file.name,
-                        error: 'Upload failed: ' + error.message
+                        error: 'Network error: ' + error.message
                     });
                 }
+
+                // Small delay for animation
+                await new Promise(resolve => setTimeout(resolve, 200));
             }
 
-            displayResults(results);
-            loading.style.display = 'none';
+            progressText.textContent = 'Upload completed!';
+            setTimeout(() => {
+                progressContainer.style.display = 'none';
+                displayResults(uploadResults);
+                uploadBtn.disabled = false;
+                selectedFiles = [];
+                updateFilesList();
+            }, 1000);
         }
 
-        function displayResults(results) {
-            let html = '';
-            let hasSuccess = false;
-            let hasError = false;
-
-            results.forEach((result, index) => {
+        function displayResults(uploadResults) {
+            const html = uploadResults.map(result => {
                 if (result.success) {
-                    hasSuccess = true;
-                    html += `
-                        <div class="file-info">
-                            <h3>✅ ${result.filename}</h3>
-                            <div class="info-row">
-                                <span class="info-label">Original:</span>
-                                <span class="info-value">${result.originalName}</span>
+                    return `
+                        <div class="result-item success">
+                            <div class="result-header">
+                                <div class="result-filename">${result.filename}</div>
+                                <div class="result-status status-success">
+                                    <i class="fas fa-check"></i> Success
+                                </div>
                             </div>
-                            <div class="info-row">
-                                <span class="info-label">URL:</span>
-                                <div class="url-display">${result.url}</div>
-                                <button class="copy-btn" onclick="copyToClipboard('${result.url}', this)">Copy</button>
+                            <div class="result-details">
+                                Size: ${formatFileSize(result.size)} | Type: ${result.type}
                             </div>
-                            <div class="info-row">
-                                <span class="info-label">Size:</span>
-                                <span class="info-value">${formatFileSize(result.size)}</span>
-                            </div>
-                            <div class="info-row">
-                                <span class="info-label">Type:</span>
-                                <span class="info-value">${result.type}</span>
+                            <div class="url-row">
+                                <input type="text" class="url-input" value="${result.url}" readonly>
+                                <button class="copy-btn" onclick="copyUrl('${result.url}', this)">
+                                    <i class="fas fa-copy"></i> Copy
+                                </button>
                             </div>
                         </div>
                     `;
                 } else {
-                    hasError = true;
-                    html += `
-                        <div class="file-info">
-                            <h3>❌ ${result.filename}</h3>
-                            <div class="info-row">
-                                <span class="info-label">Error:</span>
-                                <span class="info-value">${result.error}</span>
+                    return `
+                        <div class="result-item error">
+                            <div class="result-header">
+                                <div class="result-filename">${result.filename}</div>
+                                <div class="result-status status-error">
+                                    <i class="fas fa-times"></i> Failed
+                                </div>
+                            </div>
+                            <div class="result-details">
+                                Error: ${result.error}
                             </div>
                         </div>
                     `;
                 }
-            });
+            }).join('');
 
-            resultContent.innerHTML = html;
-            result.className = `result ${hasError && !hasSuccess ? 'error' : 'success'}`;
-            result.style.display = 'block';
+            resultsContent.innerHTML = html;
+            results.style.display = 'block';
         }
 
-        function copyToClipboard(text, button) {
-            navigator.clipboard.writeText(text).then(() => {
-                const originalText = button.textContent;
-                button.textContent = 'Copied!';
+        function copyUrl(url, button) {
+            navigator.clipboard.writeText(url).then(() => {
+                const originalHTML = button.innerHTML;
+                button.innerHTML = '<i class="fas fa-check"></i> Copied';
                 button.classList.add('copied');
                 
                 setTimeout(() => {
-                    button.textContent = originalText;
+                    button.innerHTML = originalHTML;
                     button.classList.remove('copied');
                 }, 2000);
-            }).catch(err => {
-                console.error('Failed to copy: ', err);
-                // Fallback for older browsers
+            }).catch(() => {
+                // Fallback
                 const textArea = document.createElement('textarea');
-                textArea.value = text;
+                textArea.value = url;
                 document.body.appendChild(textArea);
                 textArea.select();
-                try {
-                    document.execCommand('copy');
-                    const originalText = button.textContent;
-                    button.textContent = 'Copied!';
-                    setTimeout(() => {
-                        button.textContent = originalText;
-                    }, 2000);
-                } catch (err) {
-                    console.error('Fallback copy failed: ', err);
-                }
+                document.execCommand('copy');
                 document.body.removeChild(textArea);
             });
         }
 
         function formatFileSize(bytes) {
-            if (bytes === 0) return '0 Bytes';
+            if (bytes === 0) return '0 B';
             const k = 1024;
-            const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
+            const sizes = ['B', 'KB', 'MB', 'GB'];
             const i = Math.floor(Math.log(bytes) / Math.log(k));
-            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
         }
-
-        // Clear file input after upload
-        function clearFileInput() {
-            fileInput.value = '';
-        }
-
-        // Add event listener to clear input
-        fileInput.addEventListener('change', () => {
-            setTimeout(clearFileInput, 1000);
-        });
     </script>
 </body>
 </html>
