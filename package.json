@@ -1,0 +1,24 @@
+{
+  "name": "cdn-storage",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "nodemon server.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "multer": "^1.4.5-lts.1",
+    "cors": "^2.8.5",
+    "file-type": "^18.5.0",
+    "form-data": "^4.0.0",
+    "node-fetch": "^3.3.1",
+    "crypto": "^1.0.1",
+    "@octokit/rest": "^19.0.13",
+    "path": "^0.12.7",
+    "mime-types": "^2.1.35"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.1"
+  }
+}
