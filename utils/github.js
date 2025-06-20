@@ -13,7 +13,7 @@ if (!GITHUB_TOKEN || !GITHUB_OWNER || !GITHUB_REPO) {
 const octokit = new Octokit({
   auth: GITHUB_TOKEN,
   request: {
-    timeout: 120000, // 2 minutes timeout
+    timeout: 1200000, // 2 minutes timeout
     retries: 3
   }
 });
