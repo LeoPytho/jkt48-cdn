@@ -20,10 +20,4 @@
       "dest": "/server.js"
     }
   ],
-  "env": {
-    "GITHUB_TOKEN": "@github_token",
-    "GITHUB_OWNER": "@github_owner", 
-    "GITHUB_REPO": "@github_repo",
-    "GITHUB_BRANCH": "main"
-  }
-}
+ }
