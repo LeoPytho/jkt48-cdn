@@ -1,9 +1,10 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CDN File Storage</title>
+    <title>JKT48 CDN File Storage</title>
     <style>
         * {
             margin: 0;
@@ -18,6 +19,7 @@
             display: flex;
             align-items: center;
             justify-content: center;
+            padding: 1rem;
         }
 
         .container {
@@ -25,8 +27,10 @@
             padding: 2rem;
             border-radius: 15px;
             box-shadow: 0 10px 30px rgba(0,0,0,0.1);
-            max-width: 600px;
-            width: 90%;
+            max-width: 700px;
+            width: 100%;
+            max-height: 90vh;
+            overflow-y: auto;
         }
 
         h1 {
@@ -98,6 +102,23 @@
             text-align: center;
             color: #667eea;
             margin-top: 1rem;
+            padding: 1rem;
+        }
+
+        .loading-spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-right: 10px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
         }
 
         .result {
@@ -106,6 +127,8 @@
             padding: 1.5rem;
             border-radius: 10px;
             margin-top: 1rem;
+            max-height: 400px;
+            overflow-y: auto;
         }
 
         .result.success {
@@ -117,49 +140,117 @@
         }
 
         .file-info {
-            display: flex;
-            flex-direction: column;
-            gap: 0.5rem;
+            background: white;
+            padding: 1rem;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
         }
 
-        .file-info div {
+        .file-info h3 {
+            margin-bottom: 1rem;
+            color: #333;
+            word-break: break-all;
+        }
+
+        .info-row {
             display: flex;
             justify-content: space-between;
             align-items: center;
+            margin-bottom: 0.5rem;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .info-label {
+            font-weight: 600;
+            color: #555;
+            min-width: 60px;
+        }
+
+        .info-value {
+            color: #777;
+            flex: 1;
+            text-align: right;
         }
 
         .copy-btn {
             background: #28a745;
             color: white;
             border: none;
-            padding: 5px 15px;
+            padding: 6px 12px;
             border-radius: 15px;
             cursor: pointer;
             font-size: 0.8rem;
+            transition: background 0.2s ease;
         }
 
         .copy-btn:hover {
             background: #218838;
         }
 
+        .copy-btn.copied {
+            background: #17a2b8;
+        }
+
         .preview {
             margin-top: 1rem;
             text-align: center;
+            border-top: 1px solid #eee;
+            padding-top: 1rem;
         }
 
-        .preview img, .preview video {
+        .preview img {
             max-width: 100%;
-            max-height: 300px;
-            border-radius: 10px;
+            max-height: 250px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            object-fit: contain;
+        }
+
+        .preview video {
+            max-width: 100%;
+            max-height: 250px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
         }
 
         .preview audio {
             width: 100%;
+            max-width: 400px;
+            margin: 10px 0;
+        }
+
+        .preview-error {
+            color: #dc3545;
+            font-style: italic;
+            padding: 10px;
+            background: #f8d7da;
+            border-radius: 4px;
+            margin-top: 10px;
+        }
+
+        .file-icon {
+            font-size: 2rem;
+            margin-bottom: 10px;
+        }
+
+        .url-display {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            padding: 8px;
+            font-family: monospace;
+            font-size: 0.9rem;
+            word-break: break-all;
+            margin-right: 10px;
+            flex: 1;
         }
 
         @media (max-width: 480px) {
             .container {
                 padding: 1rem;
+                margin: 0.5rem;
             }
             
             h1 {
@@ -169,12 +260,26 @@
             .upload-area {
                 padding: 2rem 1rem;
             }
+
+            .info-row {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+
+            .info-value {
+                text-align: left;
+            }
+
+            .url-display {
+                margin-right: 0;
+                margin-bottom: 10px;
+            }
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>📁 CDN File Storage</h1>
+        <h1>📁 JKT48 CDN Storage</h1>
         
         <div class="upload-area" id="uploadArea">
             <div class="upload-icon">☁️</div>
@@ -188,7 +293,7 @@
         </div>
 
         <div class="loading" id="loading">
-            <div>📤 Uploading files...</div>
+            <div><span class="loading-spinner"></span>Uploading files...</div>
         </div>
 
         <div class="result" id="result">
@@ -209,7 +314,8 @@
             uploadArea.classList.add('dragover');
         });
 
-        uploadArea.addEventListener('dragleave', () => {
+        uploadArea.addEventListener('dragleave', (e) => {
+            e.preventDefault();
             uploadArea.classList.remove('dragover');
         });
 
@@ -249,6 +355,7 @@
                         results.push({
                             success: true,
                             filename: data.filename,
+                            originalName: file.name,
                             url: data.url,
                             size: data.size,
                             type: data.type
@@ -264,7 +371,7 @@
                     results.push({
                         success: false,
                         filename: file.name,
-                        error: 'Upload failed'
+                        error: 'Upload failed: ' + error.message
                     });
                 }
             }
@@ -278,36 +385,39 @@
             let hasSuccess = false;
             let hasError = false;
 
-            results.forEach(result => {
+            results.forEach((result, index) => {
                 if (result.success) {
                     hasSuccess = true;
                     html += `
                         <div class="file-info">
                             <h3>✅ ${result.filename}</h3>
-                            <div>
-                                <span>URL:</span>
-                                <button class="copy-btn" onclick="copyToClipboard('${result.url}')">Copy URL</button>
+                            <div class="info-row">
+                                <span class="info-label">Original:</span>
+                                <span class="info-value">${result.originalName}</span>
                             </div>
-                            <div>
-                                <span>Size:</span>
-                                <span>${formatFileSize(result.size)}</span>
+                            <div class="info-row">
+                                <span class="info-label">URL:</span>
+                                <div class="url-display">${result.url}</div>
+                                <button class="copy-btn" onclick="copyToClipboard('${result.url}', this)">Copy</button>
                             </div>
-                            <div>
-                                <span>Type:</span>
-                                <span>${result.type}</span>
+                            <div class="info-row">
+                                <span class="info-label">Size:</span>
+                                <span class="info-value">${formatFileSize(result.size)}</span>
                             </div>
-                            ${generatePreview(result.url, result.type)}
+                            <div class="info-row">
+                                <span class="info-label">Type:</span>
+                                <span class="info-value">${result.type}</span>
+                            </div>
+                            ${generatePreview(result.url, result.type, result.filename)}
                         </div>
-                        <hr style="margin: 1rem 0;">
                     `;
                 } else {
                     hasError = true;
                     html += `
                         <div class="file-info">
                             <h3>❌ ${result.filename}</h3>
-                            <div style="color: #dc3545;">Error: ${result.error}</div>
+                            <div class="preview-error">Error: ${result.error}</div>
                         </div>
-                        <hr style="margin: 1rem 0;">
                     `;
                 }
             });
@@ -317,59 +427,143 @@
             result.style.display = 'block';
         }
 
-        function generatePreview(url, type) {
-            if (type.startsWith('image/')) {
-                return `<div class="preview"><img src="${url}" alt="Preview"></div>`;
-            } else if (type.startsWith('video/')) {
-                return `<div class="preview"><video controls src="${url}"></video></div>`;
-            } else if (type.startsWith('audio/')) {
-                return `<div class="preview"><audio controls src="${url}"></audio></div>`;
+        function generatePreview(url, type, filename) {
+            const fileExtension = filename.split('.').pop().toLowerCase();
+            
+            // Image types
+            if (type.startsWith('image/') || ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'bmp'].includes(fileExtension)) {
+                return `
+                    <div class="preview">
+                        <img src="${url}" alt="Preview" 
+                             onload="this.style.display='block'" 
+                             onerror="this.parentElement.innerHTML='<div class=\\'preview-error\\'>❌ Failed to load image</div>'"
+                             style="display:none;">
+                    </div>
+                `;
             }
-            return '';
+            
+            // Video types
+            else if (type.startsWith('video/') || ['mp4', 'webm', 'ogg', 'avi', 'mov', 'wmv', 'flv', 'mkv'].includes(fileExtension)) {
+                return `
+                    <div class="preview">
+                        <video controls preload="metadata"
+                               onerror="this.parentElement.innerHTML='<div class=\\'preview-error\\'>❌ Failed to load video</div>'">
+                            <source src="${url}" type="${type}">
+                            Your browser does not support the video tag.
+                        </video>
+                    </div>
+                `;
+            }
+            
+            // Audio types
+            else if (type.startsWith('audio/') || ['mp3', 'wav', 'ogg', 'aac', 'flac', 'm4a'].includes(fileExtension)) {
+                return `
+                    <div class="preview">
+                        <div class="file-icon">🎵</div>
+                        <audio controls preload="metadata"
+                               onerror="this.parentElement.innerHTML='<div class=\\'preview-error\\'>❌ Failed to load audio</div>'">
+                            <source src="${url}" type="${type}">
+                            Your browser does not support the audio tag.
+                        </audio>
+                    </div>
+                `;
+            }
+            
+            // Text files
+            else if (type.startsWith('text/') || ['txt', 'json', 'xml', 'csv', 'js', 'css', 'html'].includes(fileExtension)) {
+                return `
+                    <div class="preview">
+                        <div class="file-icon">📄</div>
+                        <button class="btn" onclick="window.open('${url}', '_blank')" style="margin-top: 10px;">
+                            View File
+                        </button>
+                    </div>
+                `;
+            }
+            
+            // PDF files
+            else if (type === 'application/pdf' || fileExtension === 'pdf') {
+                return `
+                    <div class="preview">
+                        <div class="file-icon">📋</div>
+                        <button class="btn" onclick="window.open('${url}', '_blank')" style="margin-top: 10px;">
+                            Open PDF
+                        </button>
+                    </div>
+                `;
+            }
+            
+            // Archive files
+            else if (['zip', 'rar', '7z', 'tar', 'gz'].includes(fileExtension)) {
+                return `
+                    <div class="preview">
+                        <div class="file-icon">📦</div>
+                        <div>Archive File</div>
+                    </div>
+                `;
+            }
+            
+            // Other files
+            else {
+                return `
+                    <div class="preview">
+                        <div class="file-icon">📎</div>
+                        <div>File uploaded successfully</div>
+                        <button class="btn" onclick="window.open('${url}', '_blank')" style="margin-top: 10px;">
+                            Download
+                        </button>
+                    </div>
+                `;
+            }
         }
 
-        function copyToClipboard(text) {
+        function copyToClipboard(text, button) {
             navigator.clipboard.writeText(text).then(() => {
-                // Show temporary feedback
-                const event = new CustomEvent('copied');
-                document.dispatchEvent(event);
+                const originalText = button.textContent;
+                button.textContent = 'Copied!';
+                button.classList.add('copied');
                 
-                // Simple visual feedback
-                const btn = event.target;
-                if (btn && btn.classList.contains('copy-btn')) {
-                    const originalText = btn.textContent;
-                    btn.textContent = 'Copied!';
-                    btn.style.background = '#28a745';
+                setTimeout(() => {
+                    button.textContent = originalText;
+                    button.classList.remove('copied');
+                }, 2000);
+            }).catch(err => {
+                console.error('Failed to copy: ', err);
+                // Fallback for older browsers
+                const textArea = document.createElement('textarea');
+                textArea.value = text;
+                document.body.appendChild(textArea);
+                textArea.select();
+                try {
+                    document.execCommand('copy');
+                    const originalText = button.textContent;
+                    button.textContent = 'Copied!';
                     setTimeout(() => {
-                        btn.textContent = originalText;
-                        btn.style.background = '';
+                        button.textContent = originalText;
                     }, 2000);
+                } catch (err) {
+                    console.error('Fallback copy failed: ', err);
                 }
+                document.body.removeChild(textArea);
             });
         }
 
         function formatFileSize(bytes) {
             if (bytes === 0) return '0 Bytes';
             const k = 1024;
-            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
             const i = Math.floor(Math.log(bytes) / Math.log(k));
             return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
         }
 
-        // Handle copy button clicks
-        document.addEventListener('click', (e) => {
-            if (e.target.classList.contains('copy-btn')) {
-                const url = e.target.getAttribute('onclick').match(/'([^']+)'/)[1];
-                copyToClipboard(url);
-                
-                const originalText = e.target.textContent;
-                e.target.textContent = 'Copied!';
-                e.target.style.background = '#218838';
-                setTimeout(() => {
-                    e.target.textContent = originalText;
-                    e.target.style.background = '';
-                }, 2000);
-            }
+        // Clear file input after upload
+        function clearFileInput() {
+            fileInput.value = '';
+        }
+
+        // Add event listener to clear input
+        fileInput.addEventListener('change', () => {
+            setTimeout(clearFileInput, 1000);
         });
     </script>
 </body>
