@@ -146,11 +146,6 @@
         .preview {
             margin-top: 1rem;
             text-align: center;
-            min-height: 50px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            flex-direction: column;
         }
 
         .preview img, .preview video {
@@ -161,29 +156,6 @@
 
         .preview audio {
             width: 100%;
-        }
-
-        .preview-loading {
-            color: #667eea;
-            font-style: italic;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-
-        .preview-loading::after {
-            content: '';
-            width: 20px;
-            height: 20px;
-            border: 2px solid #f3f3f3;
-            border-top: 2px solid #667eea;
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-        }
-
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
         }
 
         @media (max-width: 480px) {
@@ -307,10 +279,9 @@
             let hasSuccess = false;
             let hasError = false;
 
-            results.forEach((result, index) => {
+            results.forEach(result => {
                 if (result.success) {
                     hasSuccess = true;
-                    const previewId = `preview-${index}`;
                     html += `
                         <div class="file-info">
                             <h3>✅ ${result.filename}</h3>
@@ -326,9 +297,7 @@
                                 <span>Type:</span>
                                 <span>${result.type}</span>
                             </div>
-                            <div class="preview" id="${previewId}">
-                                <div class="preview-loading">Loading preview...</div>
-                            </div>
+                            ${generatePreview(result.url, result.type)}
                         </div>
                         <hr style="margin: 1rem 0;">
                     `;
@@ -347,46 +316,49 @@
             resultContent.innerHTML = html;
             result.className = `result ${hasError && !hasSuccess ? 'error' : 'success'}`;
             result.style.display = 'block';
-
-            // Load previews with delay
-            results.forEach((result, index) => {
-                if (result.success) {
-                    loadPreviewWithDelay(result.url, result.type, `preview-${index}`);
-                }
-            });
-        }
-
-        function loadPreviewWithDelay(url, type, previewId) {
-            setTimeout(() => {
-                const previewElement = document.getElementById(previewId);
-                if (previewElement) {
-                    const previewContent = generatePreview(url, type);
-                    if (previewContent) {
-                        previewElement.innerHTML = previewContent;
-                    } else {
-                        previewElement.innerHTML = '<div style="color: #666; font-style: italic;">No preview available</div>';
-                    }
-                }
-            }, 10000); // 10 seconds delay
         }
 
         function generatePreview(url, type) {
+            if (!url || !type) return '';
+            
             if (type.startsWith('image/')) {
-                return `<img src="${url}" alt="Preview" onload="this.style.opacity=1" style="opacity:0; transition: opacity 0.3s;">`;
+                return `<div class="preview"><img src="${url}" alt="Preview" onerror="this.style.display='none'"></div>`;
             } else if (type.startsWith('video/')) {
-                return `<video controls src="${url}" onloadeddata="this.style.opacity=1" style="opacity:0; transition: opacity 0.3s;"></video>`;
+                return `<div class="preview"><video controls src="${url}" onerror="this.style.display='none'"></video></div>`;
             } else if (type.startsWith('audio/')) {
-                return `<audio controls src="${url}" onloadeddata="this.style.opacity=1" style="opacity:0; transition: opacity 0.3s;"></audio>`;
+                return `<div class="preview"><audio controls src="${url}" onerror="this.style.display='none'"></audio></div>`;
             }
-            return null;
+            return '';
         }
 
         function copyToClipboard(text) {
-            navigator.clipboard.writeText(text).then(() => {
-                // Visual feedback handled in event listener
-            }).catch(err => {
-                console.error('Failed to copy: ', err);
-            });
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(text).then(() => {
+                    console.log('Text copied to clipboard');
+                }).catch(err => {
+                    console.error('Failed to copy text: ', err);
+                    fallbackCopyTextToClipboard(text);
+                });
+            } else {
+                fallbackCopyTextToClipboard(text);
+            }
+        }
+
+        function fallbackCopyTextToClipboard(text) {
+            const textArea = document.createElement("textarea");
+            textArea.value = text;
+            textArea.style.top = "0";
+            textArea.style.left = "0";
+            textArea.style.position = "fixed";
+            document.body.appendChild(textArea);
+            textArea.focus();
+            textArea.select();
+            try {
+                document.execCommand('copy');
+            } catch (err) {
+                console.error('Fallback: Oops, unable to copy', err);
+            }
+            document.body.removeChild(textArea);
         }
 
         function formatFileSize(bytes) {
@@ -397,19 +369,22 @@
             return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
         }
 
-        // Handle copy button clicks
+        // Handle copy button clicks dengan event delegation
         document.addEventListener('click', (e) => {
             if (e.target.classList.contains('copy-btn')) {
+                e.preventDefault();
                 const url = e.target.getAttribute('data-url');
-                copyToClipboard(url);
-                
-                const originalText = e.target.textContent;
-                e.target.textContent = 'Copied!';
-                e.target.style.background = '#218838';
-                setTimeout(() => {
-                    e.target.textContent = originalText;
-                    e.target.style.background = '';
-                }, 2000);
+                if (url) {
+                    copyToClipboard(url);
+                    
+                    const originalText = e.target.textContent;
+                    e.target.textContent = 'Copied!';
+                    e.target.style.background = '#218838';
+                    setTimeout(() => {
+                        e.target.textContent = originalText;
+                        e.target.style.background = '';
+                    }, 2000);
+                }
             }
         });
     </script>
