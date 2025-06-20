@@ -13,15 +13,16 @@ const __dirname = path.dirname(__filename);
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Middleware
+// Middleware dengan konfigurasi yang diperbesar untuk file besar
 app.use(cors({
   origin: '*',
   methods: ['GET', 'POST', 'HEAD', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Range']
 }));
 
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+// Perbesar limit untuk JSON dan URL encoded data
+app.use(express.json({ limit: '200mb' }));
+app.use(express.urlencoded({ extended: true, limit: '200mb' }));
 app.use(express.static('public'));
 
 // Enhanced file type detection
@@ -88,14 +89,16 @@ async function detectFileType(buffer, originalFilename) {
   return { extension, mimeType, detectedType };
 }
 
-// Multer configuration for file upload with better error handling
+// Multer configuration dengan konfigurasi yang lebih optimal untuk file besar
 const storage = multer.memoryStorage();
 const upload = multer({
   storage: storage,
   limits: {
-    fileSize: 100 * 1024 * 1024, // 100MB limit
+    fileSize: 200 * 1024 * 1024, // Naikkan ke 200MB
     files: 1,
-    fields: 1
+    fields: 1,
+    fieldSize: 200 * 1024 * 1024, // Tambahkan field size limit
+    headerPairs: 2000 // Tambahkan header pairs limit
   },
   fileFilter: (req, file, cb) => {
     // Allow all file types but log what we're receiving
@@ -114,8 +117,13 @@ app.get('/api/supported-types', (req, res) => {
   res.json(getSupportedFileTypes());
 });
 
-// API endpoint for file upload
-app.post('/api/upload', upload.single('file'), async (req, res) => {
+// API endpoint for file upload dengan timeout yang lebih panjang
+app.post('/api/upload', (req, res, next) => {
+  // Set timeout untuk file besar (10 menit)
+  req.setTimeout(600000);
+  res.setTimeout(600000);
+  next();
+}, upload.single('file'), async (req, res) => {
   try {
     if (!req.file) {
       return res.status(400).json({ 
@@ -178,7 +186,7 @@ app.post('/api/upload', upload.single('file'), async (req, res) => {
   }
 });
 
-// Serve files from GitHub with better content handling
+// Serve files from GitHub dengan optimasi untuk file besar
 app.get('/:filename', async (req, res) => {
   try {
     const filename = req.params.filename;
@@ -190,47 +198,84 @@ app.get('/:filename', async (req, res) => {
 
     console.log(`Serving file: ${filename}`);
 
+    // Set timeout untuk file besar
+    req.setTimeout(600000);
+    res.setTimeout(600000);
+
     const result = await getFileFromGitHub(filename);
     
     if (result.success) {
       const extension = path.extname(filename).slice(1).toLowerCase();
       const mimeType = mime.lookup(extension) || 'application/octet-stream';
       
-      // Set appropriate headers for different file types
+      // Set appropriate headers untuk file besar
       const headers = {
         'Content-Type': mimeType,
         'Content-Length': result.data.length,
         'Cache-Control': 'public, max-age=31536000', // 1 year cache
         'Access-Control-Allow-Origin': '*',
-        'X-File-Name': filename
+        'X-File-Name': filename,
+        'Accept-Ranges': 'bytes' // Selalu aktifkan range requests
       };
 
-      // For video files, add streaming support
-      if (mimeType.startsWith('video/')) {
-        headers['Accept-Ranges'] = 'bytes';
-        headers['Content-Disposition'] = `inline; filename="${filename}"`;
+      // Handle range requests untuk streaming file besar
+      const range = req.headers.range;
+      if (range) {
+        const parts = range.replace(/bytes=/, "").split("-");
+        const start = parseInt(parts[0], 10);
+        const end = parts[1] ? parseInt(parts[1], 10) : result.data.length - 1;
+        const chunksize = (end - start) + 1;
         
-        // Handle range requests for video streaming
-        const range = req.headers.range;
-        if (range) {
-          const parts = range.replace(/bytes=/, "").split("-");
-          const start = parseInt(parts[0], 10);
-          const end = parts[1] ? parseInt(parts[1], 10) : result.data.length - 1;
-          const chunksize = (end - start) + 1;
-          
-          headers['Content-Range'] = `bytes ${start}-${end}/${result.data.length}`;
-          headers['Content-Length'] = chunksize;
-          
-          res.writeHead(206, headers);
-          res.end(result.data.slice(start, end + 1));
-          return;
+        // Validasi range
+        if (start >= result.data.length || end >= result.data.length) {
+          res.status(416).set({
+            'Content-Range': `bytes */${result.data.length}`
+          });
+          return res.end();
         }
-      } else {
-        headers['Content-Disposition'] = `inline; filename="${filename}"`;
+        
+        headers['Content-Range'] = `bytes ${start}-${end}/${result.data.length}`;
+        headers['Content-Length'] = chunksize;
+        
+        console.log(`Serving range: ${start}-${end}/${result.data.length} for ${filename}`);
+        
+        res.writeHead(206, headers);
+        res.end(result.data.slice(start, end + 1));
+        return;
       }
-      
-      res.set(headers);
-      res.send(result.data);
+
+      // Untuk file besar (>10MB), gunakan streaming
+      if (result.data.length > 10 * 1024 * 1024) {
+        console.log(`Streaming large file: ${filename} (${result.data.length} bytes)`);
+        
+        headers['Content-Disposition'] = `inline; filename="${filename}"`;
+        res.set(headers);
+        
+        // Stream file dalam chunks untuk menghindari memory issues
+        const chunkSize = 1024 * 1024; // 1MB chunks
+        let offset = 0;
+        
+        const sendChunk = () => {
+          if (offset >= result.data.length) {
+            res.end();
+            return;
+          }
+          
+          const chunk = result.data.slice(offset, Math.min(offset + chunkSize, result.data.length));
+          res.write(chunk);
+          offset += chunkSize;
+          
+          // Non-blocking next chunk
+          setImmediate(sendChunk);
+        };
+        
+        sendChunk();
+      } else {
+        // File kecil, kirim langsung
+        headers['Content-Disposition'] = `inline; filename="${filename}"`;
+        res.set(headers);
+        res.send(result.data);
+      }
     } else {
       console.log(`File not found: ${filename}`);
       res.status(404).json({ error: 'File not found' });
@@ -238,10 +283,19 @@ app.get('/:filename', async (req, res) => {
 
   } catch (error) {
     console.error('File serve error:', error);
-    res.status(500).json({ 
-      error: 'Internal server error',
-      details: error.message
-    });
+    
+    // Handle timeout errors
+    if (error.code === 'ETIMEDOUT' || error.message.includes('timeout')) {
+      res.status(408).json({ 
+        error: 'Request timeout',
+        details: 'File is too large or connection is slow. Please try again.'
+      });
+    } else {
+      res.status(500).json({ 
+        error: 'Internal server error',
+        details: error.message
+      });
+    }
   }
 });
 
@@ -268,7 +322,8 @@ app.get('/api/info/:filename', async (req, res) => {
         extension: extension,
         url: `${req.protocol}://${req.get('host')}/${filename}`,
         github_url: result.url,
-        sha: result.sha
+        sha: result.sha,
+        supportsRangeRequests: true
       });
     } else {
       res.status(404).json({ error: 'File not found' });
@@ -302,7 +357,7 @@ app.head('/:filename', async (req, res) => {
         'Content-Length': result.size,
         'Cache-Control': 'public, max-age=31536000',
         'X-File-Name': filename,
-        'Accept-Ranges': mimeType.startsWith('video/') ? 'bytes' : 'none'
+        'Accept-Ranges': 'bytes' // Selalu aktifkan untuk semua file
       });
       
       res.status(200).end();
@@ -322,7 +377,8 @@ app.get('/api/health', (req, res) => {
     timestamp: new Date().toISOString(),
     version: '1.0.0',
     uptime: process.uptime(),
-    memory: process.memoryUsage()
+    memory: process.memoryUsage(),
+    maxFileSize: '200MB'
   });
 });
 
@@ -333,8 +389,8 @@ app.use((error, req, res, next) => {
     if (error.code === 'LIMIT_FILE_SIZE') {
       return res.status(400).json({ 
         error: 'File too large', 
-        details: 'Maximum file size is 100MB',
-        maxSize: '100MB'
+        details: 'Maximum file size is 200MB',
+        maxSize: '200MB'
       });
     }
     if (error.code === 'LIMIT_UNEXPECTED_FILE') {
@@ -346,6 +402,15 @@ app.use((error, req, res, next) => {
     return res.status(400).json({ 
       error: 'File upload error',
       details: error.message
+    });
+  }
+  
+  // Handle PayloadTooLarge error
+  if (error.type === 'entity.too.large') {
+    return res.status(413).json({
+      error: 'Payload too large',
+      details: 'Request entity is too large',
+      maxSize: '200MB'
     });
   }
   
@@ -365,9 +430,19 @@ app.use('*', (req, res) => {
   });
 });
 
-app.listen(PORT, () => {
+// Server configuration dengan optimasi untuk file besar
+const server = app.listen(PORT, () => {
   console.log(`CDN Server running on port ${PORT}`);
   console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
-  console.log(`Max file size: 100MB`);
+  console.log(`Max file size: 200MB`);
   console.log(`Supported file types: All types supported`);
+  console.log(`Streaming enabled for files > 10MB`);
 });
+
+// Konfigurasi server timeout untuk file besar
+server.timeout = 600000; // 10 menit
+server.keepAliveTimeout = 65000; // 65 detik
+server.headersTimeout = 66000; // 66 detik
+
+// Tingkatkan max listeners untuk menghindari memory leak warnings
+server.setMaxListeners(0);
