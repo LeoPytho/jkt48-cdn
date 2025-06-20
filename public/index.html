@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CDN File Storage</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .container {
+            background: white;
+            padding: 2rem;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            max-width: 600px;
+            width: 90%;
+        }
+
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 2rem;
+            font-size: 2.5rem;
+        }
+
+        .upload-area {
+            border: 3px dashed #ddd;
+            border-radius: 10px;
+            padding: 3rem;
+            text-align: center;
+            margin-bottom: 2rem;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .upload-area:hover {
+            border-color: #667eea;
+            background-color: #f8f9ff;
+        }
+
+        .upload-area.dragover {
+            border-color: #667eea;
+            background-color: #f0f2ff;
+        }
+
+        .upload-icon {
+            font-size: 3rem;
+            color: #ddd;
+            margin-bottom: 1rem;
+        }
+
+        .upload-text {
+            color: #666;
+            font-size: 1.1rem;
+            margin-bottom: 1rem;
+        }
+
+        #fileInput {
+            display: none;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 1rem;
+            transition: transform 0.2s ease;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            color: #667eea;
+            margin-top: 1rem;
+        }
+
+        .result {
+            display: none;
+            background: #f8f9fa;
+            padding: 1.5rem;
+            border-radius: 10px;
+            margin-top: 1rem;
+        }
+
+        .result.success {
+            border-left: 4px solid #28a745;
+        }
+
+        .result.error {
+            border-left: 4px solid #dc3545;
+        }
+
+        .file-info {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .file-info div {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .copy-btn {
+            background: #28a745;
+            color: white;
+            border: none;
+            padding: 5px 15px;
+            border-radius: 15px;
+            cursor: pointer;
+            font-size: 0.8rem;
+        }
+
+        .copy-btn:hover {
+            background: #218838;
+        }
+
+        .preview {
+            margin-top: 1rem;
+            text-align: center;
+        }
+
+        .preview img, .preview video {
+            max-width: 100%;
+            max-height: 300px;
+            border-radius: 10px;
+        }
+
+        .preview audio {
+            width: 100%;
+        }
+
+        @media (max-width: 480px) {
+            .container {
+                padding: 1rem;
+            }
+            
+            h1 {
+                font-size: 2rem;
+            }
+            
+            .upload-area {
+                padding: 2rem 1rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📁 CDN File Storage</h1>
+        
+        <div class="upload-area" id="uploadArea">
+            <div class="upload-icon">☁️</div>
+            <div class="upload-text">
+                Drag & drop files here or click to browse
+            </div>
+            <button class="btn" onclick="document.getElementById('fileInput').click()">
+                Choose Files
+            </button>
+            <input type="file" id="fileInput" multiple accept="*/*">
+        </div>
+
+        <div class="loading" id="loading">
+            <div>📤 Uploading files...</div>
+        </div>
+
+        <div class="result" id="result">
+            <div id="resultContent"></div>
+        </div>
+    </div>
+
+    <script>
+        const uploadArea = document.getElementById('uploadArea');
+        const fileInput = document.getElementById('fileInput');
+        const loading = document.getElementById('loading');
+        const result = document.getElementById('result');
+        const resultContent = document.getElementById('resultContent');
+
+        // Drag and drop functionality
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.classList.add('dragover');
+        });
+
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.classList.remove('dragover');
+        });
+
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+            const files = e.dataTransfer.files;
+            handleFiles(files);
+        });
+
+        fileInput.addEventListener('change', (e) => {
+            handleFiles(e.target.files);
+        });
+
+        async function handleFiles(files) {
+            if (files.length === 0) return;
+
+            loading.style.display = 'block';
+            result.style.display = 'none';
+
+            const results = [];
+
+            for (let i = 0; i < files.length; i++) {
+                const file = files[i];
+                const formData = new FormData();
+                formData.append('file', file);
+
+                try {
+                    const response = await fetch('/api/upload', {
+                        method: 'POST',
+                        body: formData
+                    });
+
+                    const data = await response.json();
+
+                    if (data.success) {
+                        results.push({
+                            success: true,
+                            filename: data.filename,
+                            url: data.url,
+                            size: data.size,
+                            type: data.type
+                        });
+                    } else {
+                        results.push({
+                            success: false,
+                            filename: file.name,
+                            error: data.error
+                        });
+                    }
+                } catch (error) {
+                    results.push({
+                        success: false,
+                        filename: file.name,
+                        error: 'Upload failed'
+                    });
+                }
+            }
+
+            displayResults(results);
+            loading.style.display = 'none';
+        }
+
+        function displayResults(results) {
+            let html = '';
+            let hasSuccess = false;
+            let hasError = false;
+
+            results.forEach(result => {
+                if (result.success) {
+                    hasSuccess = true;
+                    html += `
+                        <div class="file-info">
+                            <h3>✅ ${result.filename}</h3>
+                            <div>
+                                <span>URL:</span>
+                                <button class="copy-btn" onclick="copyToClipboard('${result.url}')">Copy URL</button>
+                            </div>
+                            <div>
+                                <span>Size:</span>
+                                <span>${formatFileSize(result.size)}</span>
+                            </div>
+                            <div>
+                                <span>Type:</span>
+                                <span>${result.type}</span>
+                            </div>
+                            ${generatePreview(result.url, result.type)}
+                        </div>
+                        <hr style="margin: 1rem 0;">
+                    `;
+                } else {
+                    hasError = true;
+                    html += `
+                        <div class="file-info">
+                            <h3>❌ ${result.filename}</h3>
+                            <div style="color: #dc3545;">Error: ${result.error}</div>
+                        </div>
+                        <hr style="margin: 1rem 0;">
+                    `;
+                }
+            });
+
+            resultContent.innerHTML = html;
+            result.className = `result ${hasError && !hasSuccess ? 'error' : 'success'}`;
+            result.style.display = 'block';
+        }
+
+        function generatePreview(url, type) {
+            if (type.startsWith('image/')) {
+                return `<div class="preview"><img src="${url}" alt="Preview"></div>`;
+            } else if (type.startsWith('video/')) {
+                return `<div class="preview"><video controls src="${url}"></video></div>`;
+            } else if (type.startsWith('audio/')) {
+                return `<div class="preview"><audio controls src="${url}"></audio></div>`;
+            }
+            return '';
+        }
+
+        function copyToClipboard(text) {
+            navigator.clipboard.writeText(text).then(() => {
+                // Show temporary feedback
+                const event = new CustomEvent('copied');
+                document.dispatchEvent(event);
+                
+                // Simple visual feedback
+                const btn = event.target;
+                if (btn && btn.classList.contains('copy-btn')) {
+                    const originalText = btn.textContent;
+                    btn.textContent = 'Copied!';
+                    btn.style.background = '#28a745';
+                    setTimeout(() => {
+                        btn.textContent = originalText;
+                        btn.style.background = '';
+                    }, 2000);
+                }
+            });
+        }
+
+        function formatFileSize(bytes) {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+
+        // Handle copy button clicks
+        document.addEventListener('click', (e) => {
+            if (e.target.classList.contains('copy-btn')) {
+                const url = e.target.getAttribute('onclick').match(/'([^']+)'/)[1];
+                copyToClipboard(url);
+                
+                const originalText = e.target.textContent;
+                e.target.textContent = 'Copied!';
+                e.target.style.background = '#218838';
+                setTimeout(() => {
+                    e.target.textContent = originalText;
+                    e.target.style.background = '';
+                }, 2000);
+            }
+        });
+    </script>
+</body>
+</html>
