@@ -1,0 +1,11 @@
+Error: HTTP/1.1 403 Forbidden
+access-control-allow-origin: *
+Strict-Transport-Security: max-age=31536000; includeSubDomains
+X-Cache: CONFIG_NOCACHE
+Accept-CH: Sec-CH-UA-Arch, Sec-CH-UA-Bitness, Sec-CH-UA-Full-Version, Sec-CH-UA-Full-Version-List, Sec-CH-UA-Mobile, Sec-CH-UA-Model, Sec-CH-UA-Platform, Sec-CH-UA-Platform-Version
+X-MSEdge-Ref: Ref A: 6A3382FF46FA4436BE1012456118C9C4 Ref B: MNZ221060608023 Ref C: 2026-01-19T02:57:09Z
+Date: Mon, 19 Jan 2026 02:57:08 GMT
+Content-Length: 0
+
+
+{"status":"error","message":"No audio data available."}
