@@ -1,0 +1,869 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OwsCDN - File Storage</title>
+    <meta property="og:title" content="OwsCDN - File Storage">
+    <meta property="og:description" content="Upload your files securely with blazing fast CDN delivery">
+    <meta property="og:type" content="website">
+    
+    <!-- Elegant Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    
+    <!-- Phosphor Icons -->
+    <script src="https://unpkg.com/@phosphor-icons/web@2.0.3"></script>
+    
+    <!-- AOS Animation Library -->
+    <link href="https://unpkg.com/aos@2.3.1/dist/aos.css" rel="stylesheet">
+    <script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        display: ['Outfit', 'system-ui', 'sans-serif'],
+                        body: ['Space Grotesk', 'system-ui', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace'],
+                    },
+                    colors: {
+                        gold: {
+                            50: '#fefce8',
+                            100: '#fef9c3',
+                            200: '#fef08a',
+                            300: '#fde047',
+                            400: '#facc15',
+                            500: '#eab308',
+                            600: '#ca8a04',
+                            700: '#a16207',
+                            800: '#854d0e',
+                            900: '#713f12',
+                        },
+                        royal: {
+                            50: '#faf5ff',
+                            100: '#f3e8ff',
+                            200: '#e9d5ff',
+                            300: '#d8b4fe',
+                            400: '#c084fc',
+                            500: '#a855f7',
+                            600: '#9333ea',
+                            700: '#7c3aed',
+                            800: '#6b21a8',
+                            900: '#581c87',
+                        },
+                        midnight: {
+                            50: '#f8fafc',
+                            100: '#f1f5f9',
+                            200: '#e2e8f0',
+                            300: '#cbd5e1',
+                            400: '#94a3b8',
+                            500: '#64748b',
+                            600: '#475569',
+                            700: '#334155',
+                            800: '#1e293b',
+                            900: '#0f172a',
+                            950: '#020617',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Space Grotesk', system-ui, sans-serif;
+            min-height: 100vh;
+            overflow-x: hidden;
+            position: relative;
+        }
+        
+        /* Animated Gradient Background */
+        .gradient-bg {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(-45deg, #0f0c29, #302b63, #24243e, #0f0c29);
+            background-size: 400% 400%;
+            animation: gradientShift 15s ease infinite;
+            z-index: -2;
+        }
+        
+        @keyframes gradientShift {
+            0%, 100% { background-position: 0% 50%; }
+            25% { background-position: 100% 50%; }
+            50% { background-position: 100% 100%; }
+            75% { background-position: 0% 100%; }
+        }
+        
+        /* Mesh Gradient Overlay */
+        .mesh-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: 
+                radial-gradient(ellipse 80% 60% at 10% 10%, rgba(168, 85, 247, 0.15), transparent 50%),
+                radial-gradient(ellipse 60% 50% at 90% 20%, rgba(234, 179, 8, 0.1), transparent 50%),
+                radial-gradient(ellipse 70% 60% at 50% 90%, rgba(139, 92, 246, 0.12), transparent 50%),
+                radial-gradient(ellipse 50% 40% at 80% 80%, rgba(251, 191, 36, 0.08), transparent 50%);
+            z-index: -1;
+            pointer-events: none;
+        }
+        
+        /* Floating Particles */
+        .particles {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            overflow: hidden;
+            z-index: -1;
+            pointer-events: none;
+        }
+        
+        .particle {
+            position: absolute;
+            width: 4px;
+            height: 4px;
+            background: rgba(234, 179, 8, 0.3);
+            border-radius: 50%;
+            animation: floatParticle 20s linear infinite;
+        }
+        
+        @keyframes floatParticle {
+            0% {
+                transform: translateY(100vh) rotate(0deg);
+                opacity: 0;
+            }
+            10% { opacity: 1; }
+            90% { opacity: 1; }
+            100% {
+                transform: translateY(-100vh) rotate(720deg);
+                opacity: 0;
+            }
+        }
+        
+        /* Glassmorphism Card */
+        .glass-card {
+            background: rgba(15, 23, 42, 0.75);
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
+            border: 1px solid rgba(234, 179, 8, 0.1);
+            box-shadow: 
+                0 25px 50px -12px rgba(0, 0, 0, 0.5),
+                0 0 0 1px rgba(255, 255, 255, 0.05) inset,
+                0 0 80px rgba(168, 85, 247, 0.1);
+        }
+        
+        .glass-inner {
+            background: rgba(30, 41, 59, 0.5);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(148, 163, 184, 0.1);
+        }
+        
+        /* Gold Gradient Text */
+        .gradient-gold {
+            background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 25%, #fcd34d 50%, #f59e0b 75%, #d97706 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        /* Royal Gradient Text */
+        .gradient-royal {
+            background: linear-gradient(135deg, #c084fc 0%, #a855f7 50%, #7c3aed 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        /* Border */
+        .premium-border {
+            position: relative;
+        }
+        
+        .premium-border::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            padding: 1px;
+            border-radius: inherit;
+            background: linear-gradient(135deg, rgba(234, 179, 8, 0.4), rgba(168, 85, 247, 0.4), rgba(234, 179, 8, 0.4));
+            -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+            -webkit-mask-composite: xor;
+            mask-composite: exclude;
+            pointer-events: none;
+        }
+        
+        /* Upload Zone */
+        .upload-zone {
+            background: linear-gradient(135deg, rgba(168, 85, 247, 0.05) 0%, rgba(234, 179, 8, 0.05) 100%);
+            border: 2px dashed rgba(234, 179, 8, 0.25);
+            transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        .upload-zone:hover, .upload-zone.dragover {
+            border-color: rgba(234, 179, 8, 0.6);
+            background: linear-gradient(135deg, rgba(168, 85, 247, 0.1) 0%, rgba(234, 179, 8, 0.1) 100%);
+            transform: scale(1.02);
+            box-shadow: 
+                0 0 60px rgba(234, 179, 8, 0.15),
+                0 0 100px rgba(168, 85, 247, 0.1);
+        }
+        
+        /* Buttons */
+        .btn-gold {
+            background: linear-gradient(135deg, #fbbf24 0%, #d97706 100%);
+            box-shadow: 0 4px 25px rgba(234, 179, 8, 0.35);
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .btn-gold::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+            transition: left 0.5s ease;
+        }
+        
+        .btn-gold:hover::before {
+            left: 100%;
+        }
+        
+        .btn-gold:hover:not(:disabled) {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 35px rgba(234, 179, 8, 0.45);
+        }
+        
+        .btn-gold:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        .btn-ghost {
+            background: rgba(71, 85, 105, 0.4);
+            border: 1px solid rgba(234, 179, 8, 0.2);
+            transition: all 0.3s ease;
+        }
+        
+        .btn-ghost:hover {
+            background: rgba(71, 85, 105, 0.6);
+            border-color: rgba(234, 179, 8, 0.4);
+            transform: translateY(-2px);
+        }
+        
+        /* Progress Bar */
+        .progress-track {
+            background: rgba(30, 41, 59, 0.8);
+            border: 1px solid rgba(234, 179, 8, 0.1);
+        }
+        
+        .progress-bar {
+            background: linear-gradient(90deg, #fbbf24, #a855f7, #fbbf24);
+            background-size: 200% 100%;
+            animation: shimmer 2s ease-in-out infinite;
+            box-shadow: 0 0 20px rgba(234, 179, 8, 0.5);
+        }
+        
+        @keyframes shimmer {
+            0%, 100% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+        }
+        
+        /* File Items */
+        .file-item {
+            background: rgba(30, 41, 59, 0.6);
+            border: 1px solid rgba(148, 163, 184, 0.1);
+            transition: all 0.3s ease;
+        }
+        
+        .file-item:hover {
+            background: rgba(30, 41, 59, 0.8);
+            border-color: rgba(234, 179, 8, 0.2);
+            transform: translateX(4px);
+        }
+        
+        /* Result Cards */
+        .result-card {
+            background: rgba(30, 41, 59, 0.5);
+            border: 1px solid rgba(148, 163, 184, 0.1);
+        }
+        
+        .result-card.success {
+            border-left: 3px solid #22c55e;
+        }
+        
+        .result-card.error {
+            border-left: 3px solid #ef4444;
+        }
+        
+        /* Icon Badge */
+        .icon-badge {
+            width: 42px;
+            height: 42px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 12px;
+            font-size: 18px;
+        }
+        
+        /* Scrollbar */
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+        }
+        
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: rgba(30, 41, 59, 0.5);
+            border-radius: 3px;
+        }
+        
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: rgba(234, 179, 8, 0.3);
+            border-radius: 3px;
+        }
+        
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: rgba(234, 179, 8, 0.5);
+        }
+        
+        /* Toast */
+        .toast {
+            transform: translateX(120%);
+            transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        .toast.show {
+            transform: translateX(0);
+        }
+        
+        /* Glow Effect */
+        .glow-gold {
+            box-shadow: 0 0 40px rgba(234, 179, 8, 0.2);
+        }
+        
+        .glow-purple {
+            box-shadow: 0 0 40px rgba(168, 85, 247, 0.2);
+        }
+        
+        /* Status Pulse */
+        .status-pulse {
+            animation: statusPulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+        
+        @keyframes statusPulse {
+            0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.4); }
+            50% { opacity: 0.8; box-shadow: 0 0 0 8px rgba(34, 197, 94, 0); }
+        }
+        
+        @media (max-width: 640px) {
+            .mobile-stack { flex-direction: column; }
+            .mobile-full { width: 100%; }
+        }
+    </style>
+</head>
+<body class="text-slate-200 min-h-screen flex items-center justify-center p-4 sm:p-6">
+    
+    <!-- Animated Gradient Background -->
+    <div class="gradient-bg"></div>
+    <div class="mesh-overlay"></div>
+    
+    <!-- Floating Particles -->
+    <div class="particles" id="particles"></div>
+
+    <main class="w-full max-w-2xl mx-auto relative z-10">
+        <div class="glass-card rounded-3xl overflow-hidden premium-border" data-aos="fade-up" data-aos-duration="800">
+            
+            <!-- Header -->
+            <div class="px-6 sm:px-8 py-5 sm:py-6 border-b border-slate-700/30">
+                <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                    <div class="flex items-center gap-4" data-aos="fade-right" data-aos-delay="200">
+                        <div class="relative">
+                            <div class="w-14 h-14 rounded-2xl bg-gradient-to-br from-amber-400 via-yellow-500 to-amber-600 flex items-center justify-center shadow-xl glow-gold">
+                                <i class="ph-duotone ph-cloud-arrow-up text-white text-2xl"></i>
+                            </div>
+                        </div>
+                        <div>
+                            <h1 class="font-display text-2xl sm:text-3xl font-bold tracking-tight">
+                                <span class="gradient-gold">Ows</span><span class="text-white">CDN</span>
+                            </h1>
+                            <p class="text-slate-400 text-sm mt-0.5 font-body">Cloud Storage</p>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-3" data-aos="fade-left" data-aos-delay="300">
+                        <div class="glass-inner px-4 py-2 rounded-xl flex items-center gap-2">
+                            <span class="w-2.5 h-2.5 bg-emerald-400 rounded-full status-pulse"></span>
+                            <span class="text-xs text-emerald-400 font-medium">Online</span>
+                        </div>
+                        <div class="glass-inner px-4 py-2 rounded-xl">
+                            <span class="text-xs text-slate-300"><i class="ph-duotone ph-lightning text-amber-400 mr-1.5"></i>200MB</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="p-5 sm:p-8 space-y-5 custom-scrollbar max-h-[70vh] overflow-y-auto">
+                
+                <!-- Upload Zone -->
+                <div id="dropArea" class="upload-zone relative rounded-2xl p-8 sm:p-10 text-center cursor-pointer premium-border" data-aos="zoom-in" data-aos-delay="400">
+                    <div class="flex flex-col items-center justify-center pointer-events-none">
+                        <div class="w-20 h-20 rounded-3xl bg-gradient-to-br from-amber-400/20 via-purple-500/20 to-amber-400/20 flex items-center justify-center mb-5 glow-purple">
+                            <i class="ph-duotone ph-cloud-arrow-up text-amber-400 text-4xl"></i>
+                        </div>
+                        <h3 class="font-display text-xl font-semibold text-white mb-2">Drop your files here</h3>
+                        <p class="text-slate-400 text-sm font-body">or <span class="gradient-gold font-semibold cursor-pointer">browse</span> from your device</p>
+                        <div class="flex flex-wrap justify-center gap-2 mt-5">
+                            <span class="px-3 py-1.5 rounded-full glass-inner text-xs text-slate-300 font-body">
+                                <i class="ph-duotone ph-image text-orange-400 mr-1.5"></i>Images
+                            </span>
+                            <span class="px-3 py-1.5 rounded-full glass-inner text-xs text-slate-300 font-body">
+                                <i class="ph-duotone ph-video-camera text-red-400 mr-1.5"></i>Videos
+                            </span>
+                            <span class="px-3 py-1.5 rounded-full glass-inner text-xs text-slate-300 font-body">
+                                <i class="ph-duotone ph-file-text text-blue-400 mr-1.5"></i>Docs
+                            </span>
+                            <span class="px-3 py-1.5 rounded-full glass-inner text-xs text-slate-300 font-body">
+                                <i class="ph-duotone ph-file-zip text-purple-400 mr-1.5"></i>Archives
+                            </span>
+                        </div>
+                    </div>
+                    <input type="file" id="fileInput" multiple class="absolute inset-0 w-full h-full opacity-0 cursor-pointer"/>
+                </div>
+
+                <!-- Selected Files -->
+                <div id="selectedFiles" class="hidden glass-inner rounded-2xl p-5 space-y-4" data-aos="fade-up">
+                    <div class="flex items-center justify-between mb-3">
+                        <h3 class="font-display text-base font-semibold text-white flex items-center gap-2">
+                            <i class="ph-duotone ph-folder-open text-amber-400"></i>
+                            Selected Files
+                        </h3>
+                        <span id="fileCount" class="text-xs text-amber-400 bg-amber-400/10 px-3 py-1 rounded-full font-medium">0 files</span>
+                    </div>
+                    <div id="filesList" class="space-y-2"></div>
+                    <div class="flex flex-col sm:flex-row gap-3 pt-4 border-t border-slate-700/30">
+                        <button id="uploadBtn" class="btn-gold mobile-full text-slate-900 px-6 py-3 rounded-xl font-display font-semibold text-sm flex items-center justify-center gap-2">
+                            <i class="ph-duotone ph-rocket-launch"></i>
+                            Upload Files
+                        </button>
+                        <button id="clearBtn" class="btn-ghost mobile-full text-slate-300 px-6 py-3 rounded-xl font-display font-medium text-sm flex items-center justify-center gap-2">
+                            <i class="ph-duotone ph-trash"></i>
+                            Clear All
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Progress -->
+                <div id="progressContainer" class="hidden glass-inner rounded-2xl p-6 space-y-4">
+                    <div class="flex items-center justify-between mb-2">
+                        <span id="progressText" class="font-display text-sm font-semibold text-white">Preparing...</span>
+                        <span id="progressPercent" class="text-sm font-mono gradient-gold font-bold">0%</span>
+                    </div>
+                    <div class="progress-track w-full h-2.5 rounded-full overflow-hidden">
+                        <div id="progressFill" class="progress-bar h-full w-0 rounded-full transition-all duration-300"></div>
+                    </div>
+                    <p id="progressSubtext" class="text-xs text-slate-400 text-center font-body">Initializing...</p>
+                </div>
+
+                <!-- Results -->
+                <div id="results" class="hidden space-y-3">
+                    <div class="flex items-center gap-2 mb-3">
+                        <i class="ph-duotone ph-check-circle text-emerald-400 text-xl"></i>
+                        <h3 class="font-display text-base font-semibold text-white">Upload Complete</h3>
+                    </div>
+                    <div id="resultsContent" class="space-y-3"></div>
+                </div>
+            </div>
+            
+            <!-- Footer -->
+            <div class="px-6 sm:px-8 py-4 border-t border-slate-700/30 bg-slate-900/30">
+                <div class="flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-500 font-body">
+                    <div class="flex items-center gap-2">
+                        <i class="ph-fill ph-seal-check text-amber-400"></i>
+                        <span>© 2026 OwsCDN</span>
+                    </div>
+                    <div class="flex items-center gap-5">
+                        <span class="flex items-center gap-1.5 hover:text-amber-400 transition-colors cursor-pointer">
+                            <i class="ph-duotone ph-shield-check"></i>Secure
+                        </span>
+                        <span class="flex items-center gap-1.5 hover:text-amber-400 transition-colors cursor-pointer">
+                            <i class="ph-duotone ph-lightning"></i>Fast
+                        </span>
+                        <span class="flex items-center gap-1.5 hover:text-amber-400 transition-colors cursor-pointer">
+                            <i class="ph-duotone ph-globe-hemisphere-west"></i>Global
+                        </span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        // Initialize AOS
+        AOS.init({
+            once: true,
+            easing: 'ease-out-cubic'
+        });
+        
+        // Create floating particles
+        const particlesContainer = document.getElementById('particles');
+        for (let i = 0; i < 30; i++) {
+            const particle = document.createElement('div');
+            particle.className = 'particle';
+            particle.style.left = Math.random() * 100 + '%';
+            particle.style.animationDuration = (15 + Math.random() * 20) + 's';
+            particle.style.animationDelay = Math.random() * 20 + 's';
+            particle.style.width = (2 + Math.random() * 4) + 'px';
+            particle.style.height = particle.style.width;
+            particle.style.background = Math.random() > 0.5 
+                ? 'rgba(234, 179, 8, 0.3)' 
+                : 'rgba(168, 85, 247, 0.3)';
+            particlesContainer.appendChild(particle);
+        }
+        
+        let selectedFiles = [];
+        let isProcessing = false;
+        
+        const fileTypes = {
+            "video": ["mp4","avi","mov","wmv","flv","webm","mkv","m4v","3gp"],
+            "audio": ["mp3","wav","flac","aac","ogg","wma","m4a","opus"],
+            "image": ["jpg","jpeg","png","gif","bmp","svg","webp","tiff","ico"],
+            "document": ["pdf","doc","docx","xls","xlsx","ppt","pptx","txt","rtf"],
+            "archive": ["zip","rar","7z","tar","gz","bz2"],
+            "code": ["js","html","css","json","xml","py","java","cpp","c","php"],
+            "other": ["bin","exe","dmg","apk","deb","rpm"]
+        };
+
+        const fileConfig = {
+            video: { icon: "ph-duotone ph-video-camera", color: "bg-red-500/20 text-red-400" },
+            audio: { icon: "ph-duotone ph-music-notes", color: "bg-purple-500/20 text-purple-400" },
+            image: { icon: "ph-duotone ph-image", color: "bg-orange-500/20 text-orange-400" },
+            document: { icon: "ph-duotone ph-file-text", color: "bg-blue-500/20 text-blue-400" },
+            archive: { icon: "ph-duotone ph-file-zip", color: "bg-yellow-500/20 text-yellow-400" },
+            code: { icon: "ph-duotone ph-code", color: "bg-emerald-500/20 text-emerald-400" },
+            other: { icon: "ph-duotone ph-file", color: "bg-slate-500/20 text-slate-400" }
+        };
+
+        const uploadSteps = [
+            { text: "Preparing upload...", subtext: "Initializing secure connection" },
+            { text: "Validating files...", subtext: "Checking format and size" },
+            { text: "Optimizing...", subtext: "Compressing for faster transfer" },
+            { text: "Connecting to CDN...", subtext: "Establishing secure tunnel" },
+            { text: "Uploading...", subtext: "Transferring data to servers" },
+            { text: "Processing...", subtext: "Storing in global CDN network" },
+            { text: "Generating URLs...", subtext: "Creating access links" },
+            { text: "Finalizing...", subtext: "Completing secure upload" }
+        ];
+        
+        const dropArea = document.getElementById('dropArea');
+        const fileInput = document.getElementById('fileInput');
+        const selectedFilesDiv = document.getElementById('selectedFiles');
+        const filesList = document.getElementById('filesList');
+        const fileCount = document.getElementById('fileCount');
+        const uploadBtn = document.getElementById('uploadBtn');
+        const clearBtn = document.getElementById('clearBtn');
+        const progressContainer = document.getElementById('progressContainer');
+        const progressFill = document.getElementById('progressFill');
+        const progressText = document.getElementById('progressText');
+        const progressSubtext = document.getElementById('progressSubtext');
+        const progressPercent = document.getElementById('progressPercent');
+        const results = document.getElementById('results');
+        const resultsContent = document.getElementById('resultsContent');
+
+        dropArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropArea.classList.add('dragover');
+        });
+
+        dropArea.addEventListener('dragleave', () => {
+            dropArea.classList.remove('dragover');
+        });
+
+        dropArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropArea.classList.remove('dragover');
+            if (!isProcessing) addFiles(Array.from(e.dataTransfer.files));
+        });
+
+        fileInput.addEventListener('change', (e) => {
+            if (!isProcessing && e.target.files.length > 0) {
+                addFiles(Array.from(e.target.files));
+            }
+        });
+
+        dropArea.addEventListener('click', (e) => {
+            if (!isProcessing && e.target !== fileInput) fileInput.click();
+        });
+
+        function getFileType(filename) {
+            const ext = filename.split('.').pop().toLowerCase();
+            for (const [type, exts] of Object.entries(fileTypes)) {
+                if (exts.includes(ext)) return type;
+            }
+            return 'other';
+        }
+
+        function addFiles(files) {
+            if (isProcessing) return;
+            files.forEach(file => {
+                if (!selectedFiles.find(f => f.name === file.name && f.size === file.size)) {
+                    selectedFiles.push(file);
+                }
+            });
+            updateFilesList();
+            fileInput.value = '';
+        }
+
+        function updateFilesList() {
+            if (selectedFiles.length === 0) {
+                selectedFilesDiv.classList.add('hidden');
+                return;
+            }
+
+            selectedFilesDiv.classList.remove('hidden');
+            fileCount.textContent = `${selectedFiles.length} file${selectedFiles.length > 1 ? 's' : ''}`;
+            
+            filesList.innerHTML = selectedFiles.map((file, index) => {
+                const type = getFileType(file.name);
+                const config = fileConfig[type];
+                return `
+                    <div class="file-item flex items-center justify-between p-3.5 rounded-xl">
+                        <div class="flex items-center gap-3 flex-1 min-w-0">
+                            <div class="icon-badge ${config.color}">
+                                <i class="${config.icon}"></i>
+                            </div>
+                            <div class="flex-1 min-w-0">
+                                <div class="text-sm text-white font-medium font-display truncate">${file.name}</div>
+                                <div class="text-xs text-slate-400 font-body">${formatFileSize(file.size)}</div>
+                            </div>
+                        </div>
+                        <button onclick="removeFile(${index})" class="w-9 h-9 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-400 flex items-center justify-center transition-all hover:scale-110">
+                            <i class="ph-bold ph-x text-sm"></i>
+                        </button>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function removeFile(index) {
+            if (isProcessing) return;
+            selectedFiles.splice(index, 1);
+            updateFilesList();
+        }
+
+        clearBtn.addEventListener('click', () => {
+            if (isProcessing) return;
+            selectedFiles = [];
+            updateFilesList();
+            results.classList.add('hidden');
+        });
+
+        uploadBtn.addEventListener('click', uploadFiles);
+
+        async function uploadFiles() {
+            if (selectedFiles.length === 0 || isProcessing) return;
+
+            isProcessing = true;
+            uploadBtn.disabled = true;
+            progressContainer.classList.remove('hidden');
+            results.classList.add('hidden');
+
+            const uploadResults = [];
+            const totalFiles = selectedFiles.length;
+
+            for (let i = 0; i < 3; i++) {
+                progressText.textContent = uploadSteps[i].text;
+                progressSubtext.textContent = uploadSteps[i].subtext;
+                const pct = (i + 1) * 5;
+                progressFill.style.width = pct + '%';
+                progressPercent.textContent = pct + '%';
+                await delay(600);
+            }
+
+            for (let i = 0; i < selectedFiles.length; i++) {
+                const file = selectedFiles[i];
+                const base = 15;
+                const fileProgress = (85 / totalFiles) * i;
+
+                for (let s = 3; s < uploadSteps.length; s++) {
+                    const step = uploadSteps[s];
+                    const pct = Math.round(base + fileProgress + ((85 / totalFiles) / uploadSteps.length) * (s - 2));
+                    
+                    progressFill.style.width = pct + '%';
+                    progressPercent.textContent = pct + '%';
+                    progressText.textContent = `${step.text} (${i + 1}/${totalFiles})`;
+                    progressSubtext.textContent = `${step.subtext} - ${file.name}`;
+                    
+                    await delay(300);
+                }
+
+                const formData = new FormData();
+                formData.append('file', file);
+
+                try {
+                    const response = await fetch('https://cdn.owens.my.id/upload/', {
+    method: 'POST',
+    body: formData
+});
+                    const data = await response.json();
+                    uploadResults.push({
+                        success: data.success,
+                        filename: file.name,
+                        url: data.url,
+                        size: data.size,
+                        type: data.type,
+                        error: data.error
+                    });
+                } catch (error) {
+                    uploadResults.push({
+                        success: false,
+                        filename: file.name,
+                        error: error.message
+                    });
+                }
+            }
+
+            progressFill.style.width = '100%';
+            progressPercent.textContent = '100%';
+            progressText.textContent = 'Upload complete!';
+            progressSubtext.textContent = `${totalFiles} file${totalFiles > 1 ? 's' : ''} processed`;
+            
+            await delay(1000);
+            
+            progressContainer.classList.add('hidden');
+            displayResults(uploadResults);
+            uploadBtn.disabled = false;
+            isProcessing = false;
+            selectedFiles = [];
+            updateFilesList();
+        }
+
+        function displayResults(uploadResults) {
+            resultsContent.innerHTML = uploadResults.map(result => {
+                const type = getFileType(result.filename);
+                const config = fileConfig[type];
+                
+                if (result.success) {
+                    return `
+                        <div class="result-card success rounded-2xl p-4">
+                            <div class="flex items-start justify-between gap-3 mb-3">
+                                <div class="flex items-center gap-3 flex-1 min-w-0">
+                                    <div class="icon-badge ${config.color}">
+                                        <i class="${config.icon}"></i>
+                                    </div>
+                                    <div class="flex-1 min-w-0">
+                                        <div class="text-sm text-white font-medium font-display truncate">${result.filename}</div>
+                                        <div class="text-xs text-slate-400 font-body">${formatFileSize(result.size)} • ${result.type}</div>
+                                    </div>
+                                </div>
+                                <span class="px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-400 text-xs font-medium font-display">
+                                    <i class="ph-bold ph-check mr-1"></i>Success
+                                </span>
+                            </div>
+                            <div class="flex flex-col sm:flex-row gap-2">
+                                <input type="text" value="${result.url}" readonly 
+                                    class="flex-1 px-4 py-2.5 rounded-xl bg-slate-800/60 border border-slate-700/50 text-xs font-mono text-slate-300 focus:outline-none focus:border-amber-500/50">
+                                <button onclick="copyUrl('${result.url}', this)" 
+                                    class="btn-gold px-5 py-2.5 rounded-xl text-xs font-display font-semibold text-slate-900 whitespace-nowrap">
+                                    <i class="ph-duotone ph-copy mr-1.5"></i>Copy URL
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                } else {
+                    return `
+                        <div class="result-card error rounded-2xl p-4">
+                            <div class="flex items-center justify-between gap-3">
+                                <div class="flex items-center gap-3 flex-1 min-w-0">
+                                    <div class="icon-badge ${config.color}">
+                                        <i class="${config.icon}"></i>
+                                    </div>
+                                    <div class="flex-1 min-w-0">
+                                        <div class="text-sm text-white font-medium font-display truncate">${result.filename}</div>
+                                        <div class="text-xs text-red-400 mt-0.5 font-body">${result.error}</div>
+                                    </div>
+                                </div>
+                                <span class="px-3 py-1 rounded-full bg-red-500/20 text-red-400 text-xs font-medium font-display">
+                                    <i class="ph-bold ph-x mr-1"></i>Failed
+                                </span>
+                            </div>
+                        </div>
+                    `;
+                }
+            }).join('');
+
+            results.classList.remove('hidden');
+        }
+
+        function copyUrl(url, btn) {
+            navigator.clipboard.writeText(url).then(() => {
+                const original = btn.innerHTML;
+                btn.innerHTML = '<i class="ph-bold ph-check mr-1.5"></i>Copied!';
+                btn.style.background = 'linear-gradient(135deg, #22c55e, #16a34a)';
+                setTimeout(() => {
+                    btn.innerHTML = original;
+                    btn.style.background = '';
+                }, 2000);
+            }).catch(() => {
+                const ta = document.createElement('textarea');
+                ta.value = url;
+                document.body.appendChild(ta);
+                ta.select();
+                document.execCommand('copy');
+                document.body.removeChild(ta);
+                showToast('URL copied!', 'success');
+            });
+        }
+
+        function formatFileSize(bytes) {
+            if (bytes === 0) return '0 B';
+            const k = 1024;
+            const sizes = ['B', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+        }
+
+        function delay(ms) {
+            return new Promise(resolve => setTimeout(resolve, ms));
+        }
+
+        function showToast(message, type = 'success') {
+            const existing = document.querySelector('.toast');
+            if (existing) existing.remove();
+
+            const toast = document.createElement('div');
+            toast.className = `toast fixed top-5 right-5 px-5 py-3.5 rounded-2xl shadow-2xl flex items-center gap-3 z-50 glass-card premium-border`;
+            toast.innerHTML = `
+                <i class="ph-duotone ph-${type === 'success' ? 'check-circle text-emerald-400' : 'x-circle text-red-400'} text-xl"></i>
+                <span class="text-sm font-medium text-white font-display">${message}</span>
+            `;
+            document.body.appendChild(toast);
+
+            setTimeout(() => toast.classList.add('show'), 10);
+            setTimeout(() => {
+                toast.classList.remove('show');
+                setTimeout(() => toast.remove(), 400);
+            }, 3000);
+        }
+    </script>
+</body>
+</html>
