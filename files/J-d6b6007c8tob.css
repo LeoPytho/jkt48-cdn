@@ -1,0 +1,14 @@
+.toastify-custom {
+    background: var(--bs-paper-bg) !important;
+    box-shadow: 0 0 10px rgba(var(--bs-theme-rgb), 0.2);
+}
+
+.toastify-center {
+    width: fit-content;
+    max-width: 80vw !important;
+}
+
+.word-break-all {
+    word-break: break-word !important;
+    overflow-wrap: anywhere !important;
+}
